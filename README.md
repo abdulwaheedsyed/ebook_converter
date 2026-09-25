@@ -274,18 +274,23 @@ validator, applies to books like the ones it makes, and it reports EPUBCheck's
 own message codes, severities and texts: `RSC-005`, `OPF-030`, `HTM-046` and
 the rest. It covers the OCF container, package documents (metadata, manifest,
 spine, prefixes, fixed-layout properties, several renditions), content and
-navigation documents (well-formedness, references, viewports, declared
-features), CSS syntax and images. It needs no Java.
+navigation documents (well-formedness, HTML content models, references,
+viewports, declared features), CSS syntax and images. It needs no Java.
 
-It is tested against EPUBCheck 5.4.0 itself: a corpus of 63 books, one valid
+HTML content models, which elements and attributes may appear where, are
+checked against EPUBCheck's own XHTML schema, embedded unchanged and run by
+a RELAX NG validator written in Go for Leafbind (`internal/rng`). The rules
+the schema cannot express, such as no links inside links and ID references
+that must resolve, follow EPUBCheck's Schematron rules.
+
+It is tested against EPUBCheck 5.4.0 itself: a corpus of 86 books, one valid
 and each of the others broken in one particular way, with EPUBCheck's
 findings for every one recorded, and the built-in checks must agree with
 all of them. CI re-runs EPUBCheck on the corpus so the recording cannot
 drift. On the 45 books of the W3C's
 [EPUB 3 samples](https://github.com/IDPF/epub3-samples) the built-in checks
-agree with EPUBCheck on 44, and report nothing EPUBCheck does not. The one
-difference is a book with HTML content-model errors, which are not covered
-yet; see [TODO.md](TODO.md).
+agree with EPUBCheck on every book, and report nothing EPUBCheck does not.
+What is not covered yet is listed in [TODO.md](TODO.md).
 
 Validate any EPUB, not only Leafbind's, with `--check`:
 

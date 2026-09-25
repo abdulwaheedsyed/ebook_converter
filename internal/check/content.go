@@ -12,22 +12,6 @@ import (
 	"strings"
 )
 
-// htmlElements are the element names of the HTML vocabulary, which XHTML
-// content documents draw on.
-var htmlElements = map[string]bool{}
-
-func init() {
-	for _, e := range strings.Fields(`a abbr address area article aside audio b base bdi bdo blockquote
-		body br button canvas caption cite code col colgroup data datalist dd del details dfn dialog
-		div dl dt em embed fieldset figcaption figure footer form h1 h2 h3 h4 h5 h6 head header hgroup
-		hr html i iframe img input ins kbd label legend li link main map mark menu meta meter nav
-		noscript object ol optgroup option output p param picture pre progress q rb rp rt rtc ruby s
-		samp script search section select slot small source span strong style sub summary sup table
-		tbody td template textarea tfoot th thead time title tr track u ul var video wbr`) {
-		htmlElements[e] = true
-	}
-}
-
 // Attributes that reference other resources, per element.
 var refAttrs = map[string][]string{
 	"a": {"href"}, "area": {"href"}, "link": {"href"}, "img": {"src"}, "script": {"src"},
@@ -43,12 +27,13 @@ func (c *checker) checkXHTML(it *item, data []byte) {
 	}
 	root := doc.root()
 
-	// Elements outside the HTML vocabulary, and deprecated EPUB elements.
+	// Content models and attributes, from the XHTML schema.
+	c.checkSchema(it, data)
+	c.checkSchematron(it, root)
+
+	// Deprecated EPUB elements.
 	root.walk(func(n *node) {
-		switch {
-		case n.name.Space == xhtmlNS && !htmlElements[n.name.Local]:
-			c.report("RSC-005", it.path, n.line, n.col, `element "`+n.name.Local+`" not allowed here`)
-		case n.name.Space == opsNS && (n.name.Local == "switch" || n.name.Local == "trigger"):
+		if n.name.Space == opsNS && (n.name.Local == "switch" || n.name.Local == "trigger") {
 			c.report("RSC-017", it.path, n.line, n.col, `The "epub:`+n.name.Local+`" element is deprecated.`)
 		}
 	})

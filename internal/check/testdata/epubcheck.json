@@ -56,6 +56,160 @@
       "path": ""
     }
   ],
+  "html-area-outside-map": [
+    {
+      "id": "RSC-005",
+      "severity": "ERROR",
+      "path": "OEBPS/text/page-002.xhtml"
+    }
+  ],
+  "html-bad-attribute-value": [
+    {
+      "id": "RSC-005",
+      "severity": "ERROR",
+      "path": "OEBPS/text/page-002.xhtml"
+    }
+  ],
+  "html-bdo-without-dir": [
+    {
+      "id": "RSC-005",
+      "severity": "ERROR",
+      "path": "OEBPS/text/page-002.xhtml"
+    }
+  ],
+  "html-block-in-inline": [
+    {
+      "id": "RSC-005",
+      "severity": "ERROR",
+      "path": "OEBPS/text/page-002.xhtml"
+    }
+  ],
+  "html-button-in-link": [
+    {
+      "id": "RSC-005",
+      "severity": "ERROR",
+      "path": "OEBPS/text/page-002.xhtml"
+    }
+  ],
+  "html-dt-outside-dl": [
+    {
+      "id": "RSC-005",
+      "severity": "ERROR",
+      "path": "OEBPS/text/page-002.xhtml"
+    }
+  ],
+  "html-figcaption-in-middle": [
+    {
+      "id": "RSC-005",
+      "severity": "ERROR",
+      "path": "OEBPS/text/page-002.xhtml"
+    }
+  ],
+  "html-form-in-form": [
+    {
+      "id": "OPF-014",
+      "severity": "ERROR",
+      "path": "OEBPS/text/page-002.xhtml"
+    },
+    {
+      "id": "RSC-005",
+      "severity": "ERROR",
+      "path": "OEBPS/text/page-002.xhtml"
+    }
+  ],
+  "html-header-in-header": [
+    {
+      "id": "RSC-005",
+      "severity": "ERROR",
+      "path": "OEBPS/text/page-002.xhtml"
+    }
+  ],
+  "html-heading-in-paragraph": [
+    {
+      "id": "RSC-005",
+      "severity": "ERROR",
+      "path": "OEBPS/text/page-002.xhtml"
+    }
+  ],
+  "html-idref-missing": [
+    {
+      "id": "RSC-005",
+      "severity": "ERROR",
+      "path": "OEBPS/text/page-002.xhtml"
+    }
+  ],
+  "html-img-without-src": [
+    {
+      "id": "RSC-005",
+      "severity": "ERROR",
+      "path": "OEBPS/text/page-002.xhtml"
+    }
+  ],
+  "html-label-for-missing": [
+    {
+      "id": "RSC-005",
+      "severity": "ERROR",
+      "path": "OEBPS/text/page-002.xhtml"
+    }
+  ],
+  "html-label-in-label": [
+    {
+      "id": "RSC-005",
+      "severity": "ERROR",
+      "path": "OEBPS/text/page-002.xhtml"
+    }
+  ],
+  "html-li-outside-list": [
+    {
+      "id": "RSC-005",
+      "severity": "ERROR",
+      "path": "OEBPS/text/page-002.xhtml"
+    }
+  ],
+  "html-link-in-link": [
+    {
+      "id": "RSC-005",
+      "severity": "ERROR",
+      "path": "OEBPS/text/page-002.xhtml"
+    }
+  ],
+  "html-mathml-inline": [],
+  "html-mathml-invalid": [
+    {
+      "id": "RSC-005",
+      "severity": "ERROR",
+      "path": "OEBPS/text/page-002.xhtml"
+    }
+  ],
+  "html-table-without-tbody": [],
+  "html-td-outside-row": [
+    {
+      "id": "RSC-005",
+      "severity": "ERROR",
+      "path": "OEBPS/text/page-002.xhtml"
+    }
+  ],
+  "html-text-in-list": [
+    {
+      "id": "RSC-005",
+      "severity": "ERROR",
+      "path": "OEBPS/text/page-002.xhtml"
+    }
+  ],
+  "html-title-empty": [
+    {
+      "id": "RSC-005",
+      "severity": "ERROR",
+      "path": "OEBPS/text/page-002.xhtml"
+    }
+  ],
+  "html-unknown-attribute": [
+    {
+      "id": "RSC-005",
+      "severity": "ERROR",
+      "path": "OEBPS/text/page-002.xhtml"
+    }
+  ],
   "identifier-empty": [
     {
       "id": "RSC-005",

@@ -202,6 +202,11 @@ func validBook() book {
 
 const opf = "OEBPS/content.opf"
 
+// body inserts markup at the start of page 2's body.
+func body(b book, markup string) book {
+	return b.edit("OEBPS/text/page-002.xhtml", "<div>", markup+"<div>")
+}
+
 // corpusCase is one EPUB of the corpus: an edited book, or raw bytes.
 type corpusCase struct {
 	name string
@@ -384,6 +389,45 @@ func corpus() []corpusCase {
 				`  <rootfile full-path="OEBPS/second.opf" media-type="application/oebps-package+xml"/>
   </rootfiles>`).set("OEBPS/second.opf", []byte(second))
 		}},
+
+		// HTML content models and attributes (the XHTML schema)
+		{name: "html-heading-in-paragraph", make: func() book { return body(v(), `<p>Intro <h2>Heading</h2></p>`) }},
+		{name: "html-block-in-inline", make: func() book { return body(v(), `<span><div>block</div></span>`) }},
+		{name: "html-li-outside-list", make: func() book { return body(v(), `<li>stray</li>`) }},
+		{name: "html-text-in-list", make: func() book { return body(v(), `<ul>loose text<li>item</li></ul>`) }},
+		{name: "html-img-without-src", make: func() book { return body(v(), `<img alt="x"/>`) }},
+		{name: "html-bad-attribute-value", make: func() book { return body(v(), `<p dir="sideways">x</p>`) }},
+		{name: "html-unknown-attribute", make: func() book { return body(v(), `<p shiny="yes">x</p>`) }},
+		{name: "html-table-without-tbody", make: func() book { return body(v(), `<table><tr><td>1</td></tr></table>`) }},
+		{name: "html-td-outside-row", make: func() book { return body(v(), `<table><td>1</td></table>`) }},
+		{name: "html-dt-outside-dl", make: func() book { return body(v(), `<dt>term</dt>`) }},
+		{name: "html-figcaption-in-middle", make: func() book {
+			return body(v(), `<figure><p>a</p><figcaption>c</figcaption><p>b</p></figure>`)
+		}},
+		{name: "html-mathml-inline", make: func() book {
+			return body(v(), `<p><math xmlns="http://www.w3.org/1998/Math/MathML"><mi>x</mi></math></p>`).
+				edit(opf, `<item id="page-002" href="text/page-002.xhtml" media-type="application/xhtml+xml"/>`,
+					`<item id="page-002" href="text/page-002.xhtml" media-type="application/xhtml+xml" properties="mathml"/>`)
+		}},
+		{name: "html-mathml-invalid", make: func() book {
+			return body(v(), `<p><math xmlns="http://www.w3.org/1998/Math/MathML"><blink>x</blink></math></p>`).
+				edit(opf, `<item id="page-002" href="text/page-002.xhtml" media-type="application/xhtml+xml"/>`,
+					`<item id="page-002" href="text/page-002.xhtml" media-type="application/xhtml+xml" properties="mathml"/>`)
+		}},
+
+		// Rules EPUBCheck states in Schematron rather than RELAX NG
+		{name: "html-link-in-link", make: func() book { return body(v(), `<p><a href="page-001.xhtml">a <a href="page-001.xhtml">b</a></a></p>`) }},
+		{name: "html-button-in-link", make: func() book { return body(v(), `<p><a href="page-001.xhtml"><button>b</button></a></p>`) }},
+		{name: "html-header-in-header", make: func() book { return body(v(), `<header><header>h</header></header>`) }},
+		{name: "html-form-in-form", make: func() book { return body(v(), `<form><form><p>x</p></form></form>`) }},
+		{name: "html-label-in-label", make: func() book { return body(v(), `<p><label>a <label>b</label></label></p>`) }},
+		{name: "html-bdo-without-dir", make: func() book { return body(v(), `<p><bdo>x</bdo></p>`) }},
+		{name: "html-title-empty", make: func() book {
+			return v().edit("OEBPS/text/page-002.xhtml", "<title>Page 002</title>", "<title></title>")
+		}},
+		{name: "html-idref-missing", make: func() book { return body(v(), `<p aria-describedby="nowhere">x</p>`) }},
+		{name: "html-label-for-missing", make: func() book { return body(v(), `<p><label for="nowhere">x</label></p>`) }},
+		{name: "html-area-outside-map", make: func() book { return body(v(), `<p><area href="page-001.xhtml" alt="x"/></p>`) }},
 
 		// Other resources
 		{name: "image-corrupt", make: func() book { return v().set("OEBPS/images/page-002.jpg", []byte("this is not a JPEG")) }},

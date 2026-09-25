@@ -13,19 +13,23 @@ complete workflow still reaches outside the binary.
   - [x] Package documents: required metadata, language tags, modification
     date, `rendition:*` properties, prefixes, manifest properties and
     fallbacks, spine.
-  - [x] Content and navigation documents: well-formedness, unknown and
-    deprecated elements, references, fixed-layout viewports, declared
-    features (`switch`, `mathml`, `svg`, `scripted`).
+  - [x] Content and navigation documents: well-formedness, deprecated
+    elements, references, fixed-layout viewports, declared features
+    (`switch`, `mathml`, `svg`, `scripted`).
+  - [x] HTML content models: which elements and attributes may appear
+    where. `internal/rng` is a RELAX NG validator, written for this, that
+    runs EPUBCheck's own XHTML schema, embedded unchanged; the rules the
+    schema cannot express (forbidden descendants, ID references and the
+    like, from EPUBCheck's Schematron) are written out in Go.
   - [x] CSS syntax errors; image formats and corruption.
-  - [x] A corpus of 63 books, each broken in one way, with EPUBCheck 5.4.0's
+  - [x] A corpus of 86 books, each broken in one way, with EPUBCheck 5.4.0's
     findings recorded; the built-in checks agree on every case, and CI
     re-runs EPUBCheck so the recording cannot drift.
-  - [x] Agreement on 44 of the 45 W3C EPUB 3 samples, with no false positives
+  - [x] Agreement on the W3C EPUB 3 samples, with no false positives
     (`REALWORLD=dir go test -run TestRealWorld ./internal/check`).
-  - [ ] HTML content models: which elements may appear where, from the XHTML
-    RELAX NG schema. This is the one remaining difference on the samples.
-    Go has no RELAX NG validator, so either write one or translate the
-    schema's rules by hand.
+  - [ ] The navigation document's own schema rules, and package documents
+    against their schema, instead of the hand-written checks; `internal/rng`
+    can load EPUBCheck's schemas for both.
   - [ ] The EPUB CSS profile's rules beyond syntax (`CSS-001` and on),
     fonts, and font obfuscation (`encryption.xml`).
   - [ ] Remote resources and the `remote-resources` property, media overlays,

@@ -44,6 +44,16 @@ var sourceComponents = []component{
 		Files: []string{"epubcheck/LICENSE.md"},
 		Note: "internal/check reports EPUBCheck's message identifiers and severities and uses its English message " +
 			"texts, generated from its source, and reproduces the behaviour of its checks."},
+	{Name: "EPUB 3 XHTML schema", Version: "from EPUBCheck 5.4.0", URL: "https://github.com/w3c/epubcheck/tree/main/src/main/resources/com/adobe/epubcheck/schema/30",
+		License: "MIT", Files: []string{"internal/check/schema/xhtml/LICENSE"},
+		Note: "The RELAX NG schema internal/check validates content documents against, embedded unchanged."},
+	{Name: "RELAX NG schema for (X)HTML 5", Version: "from EPUBCheck 5.4.0", URL: "https://github.com/validator/validator/tree/main/schema",
+		License: "MIT", Files: []string{"internal/check/schema/xhtml/mod/html5/LICENSE"}},
+	{Name: "MathML 3 schema", Version: "from EPUBCheck 5.4.0", URL: "https://www.w3.org/Math/RelaxNG/",
+		License: "W3C Software Notice and License", Files: []string{"internal/check/schema/xhtml/mod/mathml/LICENSE", "w3c/software-2002.txt"},
+		Note: "The schema files are embedded unchanged."},
+	{Name: "ITS 2.0 schema for HTML5", Version: "from EPUBCheck 5.4.0", URL: "https://www.w3.org/TR/its20/",
+		License: "MIT", Files: []string{"internal/check/schema/xhtml/mod/its2/LICENSE"}},
 }
 
 // Components compiled into the PDFium WebAssembly module embedded by
@@ -101,7 +111,10 @@ func main() {
 	}
 	for _, c := range sourceComponents {
 		for i, f := range c.Files {
-			c.Files[i] = filepath.Join("third_party", "licenses", f)
+			// Licenses of vendored files sit beside them; the rest are in third_party.
+			if !strings.HasPrefix(f, "internal/") {
+				c.Files[i] = filepath.Join("third_party", "licenses", f)
+			}
 		}
 		comps = append(comps, c)
 	}
@@ -216,7 +229,8 @@ own license, reproduced in full below.
 The PDF engine is PDFium, compiled to WebAssembly and embedded through
 go-pdfium. The components from PDFium onward in the table are compiled into
 that WebAssembly module. The built-in EPUB validation carries material from
-EPUBCheck.
+EPUBCheck, including the RELAX NG schemas it validates content documents
+against.
 
 This software is based in part on the work of the FreeType Team.
 
