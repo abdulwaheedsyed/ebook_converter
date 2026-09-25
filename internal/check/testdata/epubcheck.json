@@ -1,0 +1,487 @@
+{
+  "container-malformed": [
+    {
+      "id": "RSC-016",
+      "severity": "FATAL",
+      "path": "META-INF/container.xml"
+    }
+  ],
+  "container-missing": [
+    {
+      "id": "RSC-002",
+      "severity": "FATAL",
+      "path": ""
+    }
+  ],
+  "container-no-rootfile": [
+    {
+      "id": "RSC-003",
+      "severity": "ERROR",
+      "path": "META-INF/container.xml"
+    }
+  ],
+  "container-rootfile-missing": [
+    {
+      "id": "OPF-002",
+      "severity": "FATAL",
+      "path": "META-INF/container.xml"
+    }
+  ],
+  "cover-image-not-image": [
+    {
+      "id": "OPF-012",
+      "severity": "ERROR",
+      "path": "OEBPS/content.opf"
+    }
+  ],
+  "cover-image-twice": [
+    {
+      "id": "RSC-005",
+      "severity": "ERROR",
+      "path": "OEBPS/content.opf"
+    }
+  ],
+  "css-syntax-error": [
+    {
+      "id": "CSS-008",
+      "severity": "ERROR",
+      "path": "OEBPS/text/page.css"
+    }
+  ],
+  "file-not-in-manifest": [],
+  "filename-space": [
+    {
+      "id": "PKG-010",
+      "severity": "WARNING",
+      "path": ""
+    }
+  ],
+  "identifier-empty": [
+    {
+      "id": "RSC-005",
+      "severity": "ERROR",
+      "path": "OEBPS/content.opf"
+    }
+  ],
+  "identifier-missing": [
+    {
+      "id": "OPF-030",
+      "severity": "ERROR",
+      "path": "OEBPS/content.opf"
+    },
+    {
+      "id": "RSC-005",
+      "severity": "ERROR",
+      "path": "OEBPS/content.opf"
+    }
+  ],
+  "image-corrupt": [
+    {
+      "id": "OPF-029",
+      "severity": "ERROR",
+      "path": "OEBPS/images/page-002.jpg"
+    },
+    {
+      "id": "PKG-021",
+      "severity": "ERROR",
+      "path": "OEBPS/images/page-002.jpg"
+    }
+  ],
+  "item-property-unknown": [
+    {
+      "id": "OPF-027",
+      "severity": "ERROR",
+      "path": "OEBPS/content.opf"
+    }
+  ],
+  "itemref-reflowable-override": [],
+  "language-invalid": [
+    {
+      "id": "OPF-092",
+      "severity": "ERROR",
+      "path": "OEBPS/content.opf"
+    }
+  ],
+  "language-missing": [
+    {
+      "id": "RSC-005",
+      "severity": "ERROR",
+      "path": "OEBPS/content.opf"
+    }
+  ],
+  "layout-invalid": [
+    {
+      "id": "RSC-005",
+      "severity": "ERROR",
+      "path": "OEBPS/content.opf"
+    }
+  ],
+  "layout-twice": [
+    {
+      "id": "RSC-005",
+      "severity": "ERROR",
+      "path": "OEBPS/content.opf"
+    }
+  ],
+  "layout-whitespace": [],
+  "link-cfi-fragment": [
+    {
+      "id": "RSC-020",
+      "severity": "ERROR",
+      "path": "OEBPS/nav.xhtml"
+    }
+  ],
+  "link-path-absolute": [
+    {
+      "id": "RSC-007",
+      "severity": "ERROR",
+      "path": "OEBPS/text/page-002.xhtml"
+    },
+    {
+      "id": "RSC-026",
+      "severity": "ERROR",
+      "path": "OEBPS/text/page-002.xhtml"
+    }
+  ],
+  "manifest-duplicate-href": [
+    {
+      "id": "OPF-074",
+      "severity": "ERROR",
+      "path": "OEBPS/content.opf"
+    }
+  ],
+  "manifest-duplicate-id": [
+    {
+      "id": "RSC-005",
+      "severity": "ERROR",
+      "path": "OEBPS/content.opf"
+    },
+    {
+      "id": "RSC-008",
+      "severity": "ERROR",
+      "path": "OEBPS/text/page-001.xhtml"
+    }
+  ],
+  "manifest-file-missing": [
+    {
+      "id": "RSC-001",
+      "severity": "ERROR",
+      "path": "OEBPS/images/page-002.jpg"
+    }
+  ],
+  "media-type-mismatch": [
+    {
+      "id": "OPF-029",
+      "severity": "ERROR",
+      "path": "OEBPS/images/page-002.jpg"
+    }
+  ],
+  "metadata-xsd-prefix": [
+    {
+      "id": "OPF-086c",
+      "severity": "WARNING",
+      "path": "OEBPS/content.opf"
+    }
+  ],
+  "mimetype-compressed": [],
+  "mimetype-extra-field": [
+    {
+      "id": "PKG-005",
+      "severity": "ERROR",
+      "path": ""
+    }
+  ],
+  "mimetype-missing": [
+    {
+      "id": "PKG-006",
+      "severity": "ERROR",
+      "path": ""
+    }
+  ],
+  "mimetype-not-first": [
+    {
+      "id": "PKG-006",
+      "severity": "ERROR",
+      "path": ""
+    }
+  ],
+  "mimetype-wrong-content": [
+    {
+      "id": "PKG-007",
+      "severity": "ERROR",
+      "path": ""
+    }
+  ],
+  "modified-bad-format": [
+    {
+      "id": "RSC-005",
+      "severity": "ERROR",
+      "path": "OEBPS/content.opf"
+    }
+  ],
+  "modified-missing": [
+    {
+      "id": "RSC-005",
+      "severity": "ERROR",
+      "path": "OEBPS/content.opf"
+    }
+  ],
+  "modified-whitespace": [],
+  "nav-link-broken": [
+    {
+      "id": "RSC-007",
+      "severity": "ERROR",
+      "path": "OEBPS/nav.xhtml"
+    }
+  ],
+  "nav-property-missing": [
+    {
+      "id": "RSC-005",
+      "severity": "ERROR",
+      "path": "OEBPS/content.opf"
+    }
+  ],
+  "nav-property-twice": [
+    {
+      "id": "RSC-005",
+      "severity": "ERROR",
+      "path": "OEBPS/content.opf"
+    },
+    {
+      "id": "RSC-005",
+      "severity": "ERROR",
+      "path": "OEBPS/text/page-002.xhtml"
+    }
+  ],
+  "nav-toc-missing": [
+    {
+      "id": "RSC-005",
+      "severity": "ERROR",
+      "path": "OEBPS/nav.xhtml"
+    }
+  ],
+  "not-a-zip": [
+    {
+      "id": "PKG-003",
+      "severity": "ERROR",
+      "path": ""
+    },
+    {
+      "id": "PKG-008",
+      "severity": "FATAL",
+      "path": ""
+    }
+  ],
+  "opf-malformed": [
+    {
+      "id": "RSC-016",
+      "severity": "FATAL",
+      "path": "OEBPS/content.opf"
+    }
+  ],
+  "orientation-invalid": [
+    {
+      "id": "RSC-005",
+      "severity": "ERROR",
+      "path": "OEBPS/content.opf"
+    }
+  ],
+  "prefix-maps-dublin-core": [
+    {
+      "id": "OPF-007c",
+      "severity": "ERROR",
+      "path": "OEBPS/content.opf"
+    }
+  ],
+  "second-rendition-invalid": [
+    {
+      "id": "OPF-092",
+      "severity": "ERROR",
+      "path": "OEBPS/second.opf"
+    },
+    {
+      "id": "RSC-017",
+      "severity": "WARNING",
+      "path": "META-INF/container.xml"
+    },
+    {
+      "id": "RSC-019",
+      "severity": "WARNING",
+      "path": ""
+    }
+  ],
+  "spine-bad-direction": [
+    {
+      "id": "RSC-005",
+      "severity": "ERROR",
+      "path": "OEBPS/content.opf"
+    }
+  ],
+  "spine-duplicate-itemref": [
+    {
+      "id": "RSC-005",
+      "severity": "ERROR",
+      "path": "OEBPS/content.opf"
+    },
+    {
+      "id": "RSC-011",
+      "severity": "ERROR",
+      "path": "OEBPS/nav.xhtml"
+    }
+  ],
+  "spine-empty": [
+    {
+      "id": "RSC-005",
+      "severity": "ERROR",
+      "path": "OEBPS/content.opf"
+    },
+    {
+      "id": "RSC-011",
+      "severity": "ERROR",
+      "path": "OEBPS/nav.xhtml"
+    }
+  ],
+  "spine-image-fallback-no-viewport": [
+    {
+      "id": "HTM-046",
+      "severity": "ERROR",
+      "path": "OEBPS/text/page-002.xhtml"
+    },
+    {
+      "id": "RSC-011",
+      "severity": "ERROR",
+      "path": "OEBPS/nav.xhtml"
+    }
+  ],
+  "spine-image-item": [
+    {
+      "id": "OPF-043",
+      "severity": "ERROR",
+      "path": "OEBPS/content.opf"
+    },
+    {
+      "id": "RSC-011",
+      "severity": "ERROR",
+      "path": "OEBPS/nav.xhtml"
+    }
+  ],
+  "spine-image-with-fallback": [
+    {
+      "id": "RSC-011",
+      "severity": "ERROR",
+      "path": "OEBPS/nav.xhtml"
+    }
+  ],
+  "spine-unknown-idref": [
+    {
+      "id": "OPF-049",
+      "severity": "ERROR",
+      "path": "OEBPS/content.opf"
+    },
+    {
+      "id": "RSC-005",
+      "severity": "ERROR",
+      "path": "OEBPS/content.opf"
+    },
+    {
+      "id": "RSC-011",
+      "severity": "ERROR",
+      "path": "OEBPS/nav.xhtml"
+    }
+  ],
+  "spread-invalid": [
+    {
+      "id": "RSC-005",
+      "severity": "ERROR",
+      "path": "OEBPS/content.opf"
+    }
+  ],
+  "title-empty": [
+    {
+      "id": "RSC-005",
+      "severity": "ERROR",
+      "path": "OEBPS/content.opf"
+    }
+  ],
+  "title-missing": [
+    {
+      "id": "RSC-005",
+      "severity": "ERROR",
+      "path": "OEBPS/content.opf"
+    }
+  ],
+  "unique-identifier-mismatch": [
+    {
+      "id": "OPF-030",
+      "severity": "ERROR",
+      "path": "OEBPS/content.opf"
+    },
+    {
+      "id": "RSC-005",
+      "severity": "ERROR",
+      "path": "OEBPS/content.opf"
+    }
+  ],
+  "valid": [],
+  "xhtml-epub-switch": [
+    {
+      "id": "OPF-014",
+      "severity": "ERROR",
+      "path": "OEBPS/text/page-002.xhtml"
+    },
+    {
+      "id": "RSC-017",
+      "severity": "WARNING",
+      "path": "OEBPS/text/page-002.xhtml"
+    }
+  ],
+  "xhtml-image-missing": [
+    {
+      "id": "RSC-007",
+      "severity": "ERROR",
+      "path": "OEBPS/text/page-002.xhtml"
+    }
+  ],
+  "xhtml-malformed": [
+    {
+      "id": "RSC-016",
+      "severity": "FATAL",
+      "path": "OEBPS/text/page-002.xhtml"
+    }
+  ],
+  "xhtml-stylesheet-missing": [
+    {
+      "id": "RSC-007",
+      "severity": "ERROR",
+      "path": "OEBPS/text/page-002.xhtml"
+    }
+  ],
+  "xhtml-title-missing": [
+    {
+      "id": "RSC-017",
+      "severity": "WARNING",
+      "path": "OEBPS/text/page-002.xhtml"
+    }
+  ],
+  "xhtml-unknown-element": [
+    {
+      "id": "RSC-005",
+      "severity": "ERROR",
+      "path": "OEBPS/text/page-002.xhtml"
+    }
+  ],
+  "xhtml-viewport-invalid": [
+    {
+      "id": "HTM_057",
+      "severity": "ERROR",
+      "path": "OEBPS/text/page-002.xhtml"
+    }
+  ],
+  "xhtml-viewport-missing": [
+    {
+      "id": "HTM-046",
+      "severity": "ERROR",
+      "path": "OEBPS/text/page-002.xhtml"
+    }
+  ]
+}

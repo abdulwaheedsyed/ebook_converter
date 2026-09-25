@@ -8,13 +8,13 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"os/signal"
+	"regexp"
 	"sort"
 	"strings"
 	"syscall"
@@ -54,6 +54,10 @@ func run(args []string, stdout, stderr io.Writer) int {
 	case err != nil:
 		fmt.Fprintf(stderr, "error: %v\n\n%s", err, usageText)
 		return 2
+	}
+
+	if o.Check != nil {
+		return runCheck(o.Check, stdout, stderr)
 	}
 
 	ok, err := convert(ctx, o, stdout)
@@ -152,14 +156,20 @@ func convert(ctx context.Context, o Options, out io.Writer) (bool, error) {
 		say("Validation  : skipped\n")
 		return true, nil
 	}
-	if len(res.Problems) == 0 {
+	builtinPassed := true
+	lines := make([]string, len(res.Problems))
+	for i, p := range res.Problems {
+		lines[i] = p.String()
+		builtinPassed = builtinPassed && !p.Fails()
+	}
+	switch {
+	case len(lines) == 0:
 		say("Validation  : passed\n")
-	} else {
+	case builtinPassed:
+		say("Validation  : passed, with warnings\n")
+		reportProblems(out, lines)
+	default:
 		say("Validation  : FAILED\n")
-		lines := make([]string, len(res.Problems))
-		for i, p := range res.Problems {
-			lines[i] = p.String()
-		}
 		reportProblems(out, lines)
 	}
 	if o.Epubcheck {
@@ -179,13 +189,17 @@ func convert(ctx context.Context, o Options, out io.Writer) (bool, error) {
 	return res.Passed, nil
 }
 
-// problemCounts tallies findings by code, most frequent first.
+// problemLabel matches the SEVERITY(CODE) that starts a finding, in the
+// format both epubcheck and the built-in checks print.
+var problemLabel = regexp.MustCompile(`^[A-Z]+\([A-Z]{2,3}[-_][0-9]{3}[a-z]?\)`)
+
+// problemCounts tallies findings by severity and code, most frequent first.
 func problemCounts(lines []string) ([]string, map[string]int) {
 	byCode := map[string]int{}
 	for _, l := range lines {
-		code := l
-		if i := bytes.IndexAny([]byte(l), ":("); i > 0 {
-			code = l[:i]
+		code := problemLabel.FindString(l)
+		if code == "" {
+			code, _, _ = strings.Cut(l, ":")
 		}
 		byCode[code]++
 	}

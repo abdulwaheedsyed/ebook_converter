@@ -165,7 +165,11 @@ func convertBook(ctx context.Context, eng *engine, o Options, report func(Event)
 		}
 		res.Validated = true
 		res.Problems = validatePackage(data, want)
-		res.Passed = len(res.Problems) == 0
+		for _, p := range res.Problems {
+			if p.Fails() {
+				res.Passed = false
+			}
+		}
 
 		if o.Epubcheck {
 			report(Event{Stage: stageEpubcheck})

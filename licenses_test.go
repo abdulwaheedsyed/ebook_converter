@@ -47,6 +47,7 @@ func TestNoticesIncludeRequiredCredits(t *testing.T) {
 		"This software is based in part on the work of the FreeType Team.",
 		"This software is based in part on the work of the Independent JPEG Group.",
 		"### PDFium", "### github.com/tetratelabs/wazero", "NOTICE:", // Apache-2.0 NOTICE files
+		"### EPUBCheck", // its message catalogue is carried in internal/check
 	} {
 		if !strings.Contains(noticesText, want) {
 			t.Errorf("THIRD_PARTY_NOTICES.md is missing %q", want)

@@ -128,6 +128,7 @@ Options may appear anywhere on the command line, as `--name value`,
 | `--jobs N` | CPUs, max 6 | Pages rendered in parallel. |
 | `--no-validate` | off | Skip all validation. |
 | `--no-epubcheck` | off | Skip the external epubcheck even when it is installed. |
+| `--check` | | Validate the EPUBs given instead of converting; see [Validation](#validation). |
 | `-v`, `--verbose` | off | Print one line per page. |
 | `--gui` | | Open the graphical interface; the same as giving no arguments. |
 | `--no-browser` | | With the interface, print its address instead of opening it. |
@@ -253,25 +254,55 @@ that background would mean inverting the page.
 
 ## Validation
 
-Every conversion is checked before the program reports success:
+Every conversion is validated before the program reports success, in two
+layers.
 
-- the ZIP layout: `mimetype` first, stored uncompressed, with no extra field;
-- every XML and XHTML file is well-formed;
-- the package metadata, including `rendition:layout` being exactly
-  `pre-paginated`, a valid BCP 47 language and a correctly formatted
-  modification date;
-- every manifest entry exists, every file is listed, and there is exactly one
-  navigation document and one cover image;
-- one spine entry per PDF page;
-- every page image decodes, matches its page's viewport, and, in normalised
-  mode, matches the canvas.
+**Built-in EPUB validation.** Leafbind includes its own implementation of the
+checks [EPUBCheck](https://github.com/w3c/epubcheck), the W3C's reference
+validator, applies to books like the ones it makes, and it reports EPUBCheck's
+own message codes, severities and texts: `RSC-005`, `OPF-030`, `HTM-046` and
+the rest. It covers the OCF container, package documents (metadata, manifest,
+spine, prefixes, fixed-layout properties, several renditions), content and
+navigation documents (well-formedness, references, viewports, declared
+features), CSS syntax and images. It needs no Java.
 
-When `epubcheck` is on `PATH` it runs as well, as an independent check. It is
-optional: without it the built-in validation still runs.
+It is tested against EPUBCheck 5.4.0 itself: a corpus of 63 books, one valid
+and each of the others broken in one particular way, with EPUBCheck's
+findings for every one recorded, and the built-in checks must agree with
+all of them. CI re-runs EPUBCheck on the corpus so the recording cannot
+drift. On the 45 books of the W3C's
+[EPUB 3 samples](https://github.com/IDPF/epub3-samples) the built-in checks
+agree with EPUBCheck on 44, and report nothing EPUBCheck does not. The one
+difference is a book with HTML content-model errors, which are not covered
+yet; see [TODO.md](TODO.md).
 
-A book that fails validation is still written, so it can be inspected, but
-the program exits with status `1`. The report groups problems by code, since
-one fault usually repeats on every page.
+Validate any EPUB, not only Leafbind's, with `--check`:
+
+```bash
+leafbind --check book.epub
+```
+
+```text
+book.epub: ERROR(OPF-049): OEBPS/content.opf(22,5): Item id "page-003" was not found in the manifest.
+book.epub: ERROR(RSC-005): OEBPS/content.opf(22,5): Error while parsing file: itemref idref "page-003" does not resolve to a manifest item
+book.epub: ERROR(RSC-011): OEBPS/nav.xhtml(10,5): Found a reference to a resource that is not a spine item.
+book.epub: Messages: 0 fatals / 3 errors / 0 warnings
+```
+
+**Leafbind's own rules** have codes starting `LB-`. Some are stricter than
+EPUBCheck, where a less forgiving reading system could trip: a compressed
+`mimetype` file, which the container specification forbids, whitespace around
+`rendition:*` values, and files in the archive that the manifest does not
+list. The rest compare the book with the PDF it came from: one page per PDF
+page, and every page image matching its viewport, the canvas and, with
+`--grayscale`, greyscale.
+
+When `epubcheck` itself is on `PATH` it runs as well, as a second opinion.
+
+A book with errors is still written, so it can be inspected, but the program
+exits with status `1`. Warnings are reported without failing the book, as
+EPUBCheck does. The report groups problems by code, since one fault usually
+repeats on every page.
 
 ## Supported platforms
 
@@ -326,11 +357,12 @@ tables, minimal padding blocks, and quality against `image/jpeg`.
 
 ## Notes
 
-- **Whitespace in the package document is significant.** `rendition:*` values
-  are compared as exact strings. Written across several lines,
-  `pre-paginated` becomes `"\n  pre-paginated\n"`, which matches nothing, and
-  the book silently falls back to a reflowable layout. The validator checks
-  for this.
+- **Package values are written on one line.** EPUB 3.3 asks reading systems
+  to trim whitespace around a value such as `rendition:layout`, and EPUBCheck
+  accepts `pre-paginated` written across several lines. A reading system that
+  compares the raw text instead would miss it and fall back to a reflowable
+  layout, so Leafbind writes every value on one line, and `LB-003` flags any
+  that is not.
 - **Output is written atomically.** The EPUB is written to a temporary file
   beside the destination and renamed into place, so an interrupted run never
   leaves a half-written book or destroys an existing one.

@@ -81,48 +81,48 @@ func TestValidateCatchesProblems(t *testing.T) {
 		code string
 		edit func(name string, body []byte, h *zip.FileHeader) []byte
 	}{
-		{"whitespace around pre-paginated", "OPF-006", func(n string, b []byte, _ *zip.FileHeader) []byte {
+		{"whitespace around pre-paginated", "LB-003", func(n string, b []byte, _ *zip.FileHeader) []byte {
 			if n == "OEBPS/content.opf" {
 				return bytes.Replace(b, []byte(">pre-paginated<"), []byte(">\n    pre-paginated\n  <"), 1)
 			}
 			return b
 		}},
-		{"compressed mimetype", "ZIP-003", func(n string, b []byte, h *zip.FileHeader) []byte {
+		{"compressed mimetype", "LB-001", func(n string, b []byte, h *zip.FileHeader) []byte {
 			if n == "mimetype" {
 				h.Method = zip.Deflate
 			}
 			return b
 		}},
-		{"missing image", "OPF-009", func(n string, b []byte, _ *zip.FileHeader) []byte {
+		{"missing image", "RSC-001", func(n string, b []byte, _ *zip.FileHeader) []byte {
 			if n == "OEBPS/images/page-002.jpg" {
 				return nil
 			}
 			return b
 		}},
-		{"malformed XHTML", "XML-001", func(n string, b []byte, _ *zip.FileHeader) []byte {
+		{"malformed XHTML", "RSC-016", func(n string, b []byte, _ *zip.FileHeader) []byte {
 			if n == "OEBPS/text/page-001.xhtml" {
 				return bytes.Replace(b, []byte("</body>"), nil, 1)
 			}
 			return b
 		}},
-		{"bad language", "OPF-004", func(n string, b []byte, _ *zip.FileHeader) []byte {
+		{"bad language", "OPF-092", func(n string, b []byte, _ *zip.FileHeader) []byte {
 			if n == "OEBPS/content.opf" {
 				return bytes.Replace(b, []byte("<dc:language>en<"), []byte("<dc:language>not a language<"), 1)
 			}
 			return b
 		}},
-		{"multi-line modified date", "OPF-005", func(n string, b []byte, _ *zip.FileHeader) []byte {
+		{"multi-line modified date", "LB-003", func(n string, b []byte, _ *zip.FileHeader) []byte {
 			if n == "OEBPS/content.opf" {
 				return bytes.Replace(b, []byte(">2026-01-02T03:04:05Z<"), []byte(">\n 2026-01-02T03:04:05Z\n<"), 1)
 			}
 			return b
 		}},
-		{"unlisted file", "OPF-010", func(n string, b []byte, _ *zip.FileHeader) []byte { return b }},
+		{"unlisted file", "LB-004", func(n string, b []byte, _ *zip.FileHeader) []byte { return b }},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			bad := rezip(t, data, c.edit)
-			if c.code == "OPF-010" {
+			if c.name == "unlisted file" {
 				// Append a stray file the manifest does not mention.
 				bad = rezip(t, bad, func(n string, b []byte, _ *zip.FileHeader) []byte { return b })
 				var out bytes.Buffer

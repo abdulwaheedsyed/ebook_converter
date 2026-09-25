@@ -14,6 +14,8 @@ components compiled into the embedded PDFium WebAssembly module. They are copied
   and runtime in every Go binary, from [golang/go](https://github.com/golang/go).
   Some distributions move these files out of `GOROOT`, so they are not read
   from there.
+- `epubcheck/`: the license of [EPUBCheck](https://github.com/w3c/epubcheck),
+  whose message catalogue `internal/check` is generated from.
 - `emscripten/`: the license of the Emscripten toolchain, whose C runtime is
   linked into the module, and of the musl libc it bundles, from
   [emscripten-core/emscripten](https://github.com/emscripten-core/emscripten).

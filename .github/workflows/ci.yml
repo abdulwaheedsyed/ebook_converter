@@ -63,6 +63,30 @@ jobs:
           CGO_ENABLED: "0"
           GOARCH: amd64
 
+  # The built-in validation is tested against results recorded from
+  # epubcheck. This checks the recording against a live epubcheck, so it
+  # cannot drift from what epubcheck really reports.
+  epubcheck:
+    name: recorded results match epubcheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - name: Install epubcheck 5.4.0
+        run: |
+          curl -sSfL -o "$RUNNER_TEMP/epubcheck.zip" https://github.com/w3c/epubcheck/releases/download/v5.4.0/epubcheck-5.4.0.zip
+          unzip -q "$RUNNER_TEMP/epubcheck.zip" -d "$RUNNER_TEMP"
+          mkdir -p "$RUNNER_TEMP/bin"
+          printf '#!/bin/sh\nexec java -jar "%s/epubcheck-5.4.0/epubcheck.jar" "$@"\n' "$RUNNER_TEMP" > "$RUNNER_TEMP/bin/epubcheck"
+          chmod +x "$RUNNER_TEMP/bin/epubcheck"
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+      - run: epubcheck --version
+      - run: go test -run TestEpubcheckGolden -v ./internal/check
+        env:
+          EPUBCHECK_VERIFY: "1"
+
   build:
     runs-on: ubuntu-latest
     needs: lint

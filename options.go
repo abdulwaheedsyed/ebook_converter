@@ -33,6 +33,8 @@ type Options struct {
 	Epubcheck bool
 	Jobs      int
 	Verbose   bool
+
+	Check []string // --check: EPUBs to validate instead of converting
 }
 
 func defaultOptions() Options {
@@ -66,6 +68,7 @@ const usageText = `Convert a PDF into a Kindle-compatible fixed-layout EPUB 3.
 Usage:
   leafbind [options] input.pdf output.epub   convert from the command line
   leafbind                                   open the graphical interface
+  leafbind --check book.epub...              validate EPUBs
 
 Run without arguments, or double-click it, to use the graphical interface.
 --gui opens it explicitly; --no-browser prints its address instead of
@@ -86,6 +89,7 @@ Options:
   --jobs N           Pages rendered in parallel      (default: CPUs, max 6)
   --no-validate      Skip all validation
   --no-epubcheck     Skip the external epubcheck even when it is installed
+  --check            Validate the EPUBs given, with the built-in checks
   -v, --verbose      Print one line per page
   -h, --help         Show this help
   --version          Show the version
@@ -146,6 +150,7 @@ func parseArgs(args []string) (Options, error) {
 		"no-validate":        boolFlag(func() { o.Validate = false }),
 		"no-epubcheck":       boolFlag(func() { o.Epubcheck = false }),
 		"verbose":            boolFlag(func() { o.Verbose = true }),
+		"check":              boolFlag(func() { o.Check = []string{} }),
 		"v":                  boolFlag(func() { o.Verbose = true }),
 		"title":              {true, func(v string) error { o.Title = v; return nil }},
 		"lang": {true, func(v string) error {
@@ -207,6 +212,13 @@ func parseArgs(args []string) (Options, error) {
 		}
 	}
 
+	if o.Check != nil {
+		if len(pos) == 0 {
+			return o, errors.New("--check needs at least one EPUB")
+		}
+		o.Check = pos
+		return o, nil
+	}
 	if len(pos) != 2 {
 		return o, fmt.Errorf("expected an input PDF and an output EPUB, got %d argument(s)", len(pos))
 	}

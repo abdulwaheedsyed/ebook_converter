@@ -5,22 +5,33 @@
 The converter itself needs nothing installed. These are the places where a
 complete workflow still reaches outside the binary.
 
-- [ ] **Validation equivalent to epubcheck, built in.** Today the converter
-  runs its own structural checks — ZIP layout, well-formed XML, package
-  metadata, manifest and spine, page images — and runs
-  [epubcheck](https://github.com/w3c/epubcheck) only when it is installed,
-  which needs Java. Port the epubcheck rules that apply to fixed-layout
-  EPUB 3.3 into Go: the package document schema and its Schematron rules,
-  XHTML content document rules, the navigation document, CSS, media types,
-  OCF container rules, and the fixed-layout `rendition:*` rules. Report
-  epubcheck's own message codes (PKG-, OPF-, RSC-, HTM-, CSS-, NAV-) so
-  results can be compared line for line. Go has no RELAX NG validator, so
-  the schemas either need one written or the rules they express
-  hand-translated.
-  - [ ] Build a corpus of valid and deliberately broken EPUBs and test that
-    the built-in checks agree with epubcheck on every one.
-  - [ ] Until parity, run epubcheck in CI, where Java is available, so it
-    keeps checking every build's output.
+- [ ] **Validation equivalent to epubcheck, built in.** Started:
+  `internal/check` reports EPUBCheck's own codes, severities and texts, and
+  `leafbind --check` runs it on any EPUB.
+  - [x] OCF container: `mimetype`, file names, `container.xml`, several
+    renditions.
+  - [x] Package documents: required metadata, language tags, modification
+    date, `rendition:*` properties, prefixes, manifest properties and
+    fallbacks, spine.
+  - [x] Content and navigation documents: well-formedness, unknown and
+    deprecated elements, references, fixed-layout viewports, declared
+    features (`switch`, `mathml`, `svg`, `scripted`).
+  - [x] CSS syntax errors; image formats and corruption.
+  - [x] A corpus of 63 books, each broken in one way, with EPUBCheck 5.4.0's
+    findings recorded; the built-in checks agree on every case, and CI
+    re-runs EPUBCheck so the recording cannot drift.
+  - [x] Agreement on 44 of the 45 W3C EPUB 3 samples, with no false positives
+    (`REALWORLD=dir go test -run TestRealWorld ./internal/check`).
+  - [ ] HTML content models: which elements may appear where, from the XHTML
+    RELAX NG schema. This is the one remaining difference on the samples.
+    Go has no RELAX NG validator, so either write one or translate the
+    schema's rules by hand.
+  - [ ] The EPUB CSS profile's rules beyond syntax (`CSS-001` and on),
+    fonts, and font obfuscation (`encryption.xml`).
+  - [ ] Remote resources and the `remote-resources` property, media overlays,
+    `epub:type` vocabularies, SVG content documents, and EPUB 2 packages.
+  - [ ] Once these are covered, stop running an installed epubcheck by
+    default.
 - [ ] **A native window for the GUI, instead of the browser.** The interface
   opens in an installed Chrome, Edge or Chromium as an app window, or in the
   default browser. A native window needs the system web view — WebView2 on
