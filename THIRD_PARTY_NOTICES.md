@@ -1,6 +1,6 @@
 # Third-party notices
 
-ebook_converter is distributed under the MIT License; see LICENSE. Its
+Leafbind is distributed under the MIT License; see LICENSE. Its
 executables also contain the third-party software listed here, each under its
 own license, reproduced in full below.
 

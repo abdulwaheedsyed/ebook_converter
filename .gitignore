@@ -1,7 +1,7 @@
 # build output
 /dist/
-/ebook_converter
-/ebook_converter.exe
+/leafbind
+/leafbind.exe
 
 # never commit converted books or test output
 *.epub

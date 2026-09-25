@@ -309,7 +309,7 @@ func writeAtomically(dst string, b *Book) ([]byte, error) {
 		return nil, fmt.Errorf("packaging: %w", err)
 	}
 
-	tmp, err := os.CreateTemp(filepath.Dir(dst), ".ebook_converter-*.tmp")
+	tmp, err := os.CreateTemp(filepath.Dir(dst), ".leafbind-*.tmp")
 	if err != nil {
 		return nil, err
 	}

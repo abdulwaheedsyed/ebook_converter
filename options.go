@@ -64,8 +64,8 @@ var (
 const usageText = `Convert a PDF into a Kindle-compatible fixed-layout EPUB 3.
 
 Usage:
-  ebook_converter [options] input.pdf output.epub
-  ebook_converter                     open the graphical interface
+  leafbind [options] input.pdf output.epub   convert from the command line
+  leafbind                                   open the graphical interface
 
 Run without arguments, or double-click it, to use the graphical interface.
 --gui opens it explicitly; --no-browser prints its address instead of

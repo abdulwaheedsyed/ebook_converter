@@ -76,7 +76,7 @@ jobs:
       - run: make package
       - uses: actions/upload-artifact@v4
         with:
-          name: ebook_converter-${{ github.sha }}
+          name: leafbind-${{ github.sha }}
           path: |
             dist/*.tar.gz
             dist/*.zip

@@ -1,4 +1,4 @@
-module github.com/abdulwaheedsyed/ebook_converter
+module github.com/abdulwaheedsyed/leafbind
 
 go 1.27.1
 

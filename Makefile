@@ -3,7 +3,7 @@
 # where the WebAssembly runtime compiles to native code. Elsewhere it falls
 # back to an interpreter and becomes far too slow to be useful.
 
-BINARY    := ebook_converter
+BINARY    := leafbind
 VERSION   ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 LDFLAGS   := -s -w -X main.version=$(VERSION)
 PLATFORMS := linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64 windows/arm64

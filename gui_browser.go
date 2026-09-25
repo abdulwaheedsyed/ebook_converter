@@ -12,10 +12,10 @@ import (
 // Chromium, Brave) can show it as an app window, without tabs or an address
 // bar, so one is used when installed; otherwise the default browser opens it.
 //
-// EBOOK_CONVERTER_BROWSER overrides the choice: "default" for the default
+// LEAFBIND_BROWSER overrides the choice: "default" for the default
 // browser, or the path of a Chromium-based browser.
 func openUI(url string) error {
-	pref := os.Getenv("EBOOK_CONVERTER_BROWSER")
+	pref := os.Getenv("LEAFBIND_BROWSER")
 	if pref != "default" {
 		cands := appBrowsers()
 		if pref != "" {

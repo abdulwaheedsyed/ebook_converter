@@ -1,4 +1,4 @@
-// eBook Converter interface. Talks to the local server over a token-guarded
+// Leafbind interface. Talks to the local server over a token-guarded
 // JSON API and receives job updates as server-sent events.
 "use strict";
 
@@ -422,7 +422,7 @@ $("#quit").addEventListener("click", async () => {
 
 if (!token) {
   $("#stopped").hidden = false;
-  $("#stopped h2").textContent = "Open eBook Converter from its link";
+  $("#stopped h2").textContent = "Open Leafbind from its link";
   $("#stopped p").textContent = "This page needs the address printed when the program starts.";
 } else {
   $("#engine").hidden = false;

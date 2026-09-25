@@ -1,4 +1,4 @@
-# ebook_converter
+# Leafbind
 
 Converts a PDF into a Kindle-compatible **fixed-layout EPUB 3**. Every page
 becomes an image on one shared canvas, so the original typesetting survives
@@ -15,7 +15,7 @@ Amazon's Kindle Previewer converts an EPUB into a Kindle book, but it does not
 convert a PDF into an EPUB. A PDF has to become a fixed-layout EPUB some other
 way first, and doing that well — every page kept intact, the right
 orientation, no stretched or split pages, and the metadata Kindle's
-fixed-layout support relies on — is fiddly. ebook_converter was developed to
+fixed-layout support relies on — is fiddly. Leafbind was developed to
 fill that gap: it turns the PDF into the fixed-layout EPUB that Kindle
 Previewer, or Send to Kindle, can then take the rest of the way.
 
@@ -45,32 +45,32 @@ Previewer, or Send to Kindle, can then take the rest of the way.
 ## Install
 
 Download the archive for your platform from the
-[releases page](https://github.com/abdulwaheedsyed/ebook_converter/releases),
-check it against `SHA256SUMS`, and put the `ebook_converter` binary somewhere
+[releases page](https://github.com/abdulwaheedsyed/leafbind/releases),
+check it against `SHA256SUMS`, and put the `leafbind` binary somewhere
 on your `PATH`:
 
 ```bash
 sha256sum --ignore-missing -c SHA256SUMS      # macOS: shasum -a 256 -c SHA256SUMS
-tar -xzf ebook_converter-*-linux-amd64.tar.gz
+tar -xzf leafbind-*-linux-amd64.tar.gz
 ```
 
 On macOS, a binary downloaded through a browser is quarantined by Gatekeeper
 because it is not notarised. Clear the flag once after extracting:
 
 ```bash
-xattr -d com.apple.quarantine ebook_converter
+xattr -d com.apple.quarantine leafbind
 ```
 
 Or install from source with Go 1.27 or later:
 
 ```bash
-go install github.com/abdulwaheedsyed/ebook_converter@latest
+go install github.com/abdulwaheedsyed/leafbind@latest
 ```
 
 Or build from a clone:
 
 ```bash
-make build        # ./ebook_converter for this machine
+make build        # ./leafbind for this machine
 make dist         # every supported platform, into dist/
 make package      # release archives and SHA256SUMS, into dist/
 ```
@@ -80,7 +80,7 @@ No C compiler is needed for any target: the build is pure Go with
 
 ## The graphical interface
 
-Double-click `ebook_converter`, or run it without arguments. It opens a
+Double-click `leafbind`, or run it without arguments. It opens a
 window where you drop in PDFs, review each book's title, and choose the
 language, page order, colour and quality. Converted books are validated and
 offered for download, one at a time or all together. The window follows the
@@ -88,7 +88,7 @@ system's light or dark theme.
 
 The interface is a small web app built into the binary. It opens in an app
 window of Chrome, Edge, Chromium or Brave when one is installed, and in the
-default browser otherwise. Set `EBOOK_CONVERTER_BROWSER` to `default` to
+default browser otherwise. Set `LEAFBIND_BROWSER` to `default` to
 always use the default browser, or to the path of a Chromium-based browser
 to use that one. Closing the window, or choosing Quit, ends the program.
 
@@ -96,7 +96,7 @@ to use that one. Closing the window, or choosing Quit, ends the program.
 suits a machine you reach over SSH:
 
 ```bash
-ebook_converter --no-browser
+leafbind --no-browser
 ```
 
 The interface only listens on `127.0.0.1`, and every request must carry a
@@ -107,7 +107,7 @@ temporary folder that is deleted when the program exits.
 ## Command line
 
 ```bash
-ebook_converter [options] input.pdf output.epub
+leafbind [options] input.pdf output.epub
 ```
 
 Options may appear anywhere on the command line, as `--name value`,
@@ -142,43 +142,43 @@ Exit status is `0` on success, `1` when conversion or validation fails, and
 A book in greyscale for e-ink:
 
 ```bash
-ebook_converter --grayscale --title "Book Title" book.pdf book.epub
+leafbind --grayscale --title "Book Title" book.pdf book.epub
 ```
 
 A right-to-left book, such as Arabic or Urdu:
 
 ```bash
-ebook_converter --grayscale --rtl --lang ar --title "Book Title" book.pdf book.epub
+leafbind --grayscale --rtl --lang ar --title "Book Title" book.pdf book.epub
 ```
 
 A book printed on a tinted background:
 
 ```bash
-ebook_converter --grayscale --flatten-bg book.pdf book.epub
+leafbind --grayscale --flatten-bg book.pdf book.epub
 ```
 
 A book whose small print should stay sharp when zoomed:
 
 ```bash
-ebook_converter --grayscale --dpi 300 book.pdf book.epub
+leafbind --grayscale --dpi 300 book.pdf book.epub
 ```
 
 A smaller file, at some cost in sharpness:
 
 ```bash
-ebook_converter --grayscale --dpi 150 --quality 85 --max-edge 1920 book.pdf book.epub
+leafbind --grayscale --dpi 150 --quality 85 --max-edge 1920 book.pdf book.epub
 ```
 
 Every PDF in a directory (POSIX shell):
 
 ```bash
-for f in *.pdf; do ebook_converter --grayscale "$f" "${f%.pdf}.epub"; done
+for f in *.pdf; do leafbind --grayscale "$f" "${f%.pdf}.epub"; done
 ```
 
 The same in PowerShell:
 
 ```powershell
-Get-ChildItem *.pdf | ForEach-Object { ebook_converter --grayscale $_.FullName ($_.BaseName + ".epub") }
+Get-ChildItem *.pdf | ForEach-Object { leafbind --grayscale $_.FullName ($_.BaseName + ".epub") }
 ```
 
 ## Choosing a DPI
@@ -346,13 +346,13 @@ tables, minimal padding blocks, and quality against `image/jpeg`.
 
 ## License
 
-ebook_converter is released under the [MIT License](LICENSE).
+Leafbind is released under the [MIT License](LICENSE).
 
 Its executables include third-party software under their own licenses — Go,
 the Go modules it uses, and PDFium with the libraries compiled into its
 WebAssembly build. [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) lists them
 with their full license texts. The same text is embedded in every binary and
-printed by `ebook_converter --licenses`, and `make dist` places both files
+printed by `leafbind --licenses`, and `make dist` places both files
 beside the binaries it builds.
 
 This software is based in part on the work of the FreeType Team.

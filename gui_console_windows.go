@@ -35,7 +35,7 @@ func reportGUIError(stderr io.Writer, err error) {
 		return
 	}
 	text, _ := syscall.UTF16PtrFromString(err.Error())
-	title, _ := syscall.UTF16PtrFromString("eBook Converter")
+	title, _ := syscall.UTF16PtrFromString("Leafbind")
 	const mbIconError = 0x10
 	user32.NewProc("MessageBoxW").Call(0, uintptr(unsafe.Pointer(text)), uintptr(unsafe.Pointer(title)), mbIconError)
 }

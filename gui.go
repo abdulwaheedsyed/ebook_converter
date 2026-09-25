@@ -214,7 +214,7 @@ func runGUI(ctx context.Context, g guiOptions, out io.Writer) error {
 	go s.warmEngine()
 
 	link := s.origin + "/?t=" + s.token
-	fmt.Fprintf(out, "eBook Converter is running at\n\n    %s\n\nClose its window or press Ctrl+C to quit.\n", link)
+	fmt.Fprintf(out, "Leafbind is running at\n\n    %s\n\nClose its window or press Ctrl+C to quit.\n", link)
 	if !g.NoBrowser {
 		if err := openUI(link); err != nil {
 			fmt.Fprintf(out, "Could not open a browser (%v); open the address above.\n", err)
@@ -268,7 +268,7 @@ func newGUIServer(ctx context.Context, hostport string) (*guiServer, error) {
 	if _, err := rand.Read(t[:]); err != nil {
 		return nil, err
 	}
-	dir, err := os.MkdirTemp("", "ebook_converter-gui-*")
+	dir, err := os.MkdirTemp("", "leafbind-gui-*")
 	if err != nil {
 		return nil, err
 	}

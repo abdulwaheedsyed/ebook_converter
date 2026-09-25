@@ -1,5 +1,5 @@
 // Command gennotices writes THIRD_PARTY_NOTICES.md: the licenses of every
-// third-party component compiled into ebook_converter.
+// third-party component compiled into Leafbind.
 //
 // Run it from the repository root with "make notices". Go modules are found
 // with "go list -deps" for every release platform, so a module linked on one
@@ -193,7 +193,7 @@ func identify(file string) string {
 func write(b *bytes.Buffer, comps []component, goCount int) {
 	b.WriteString(`# Third-party notices
 
-ebook_converter is distributed under the MIT License; see LICENSE. Its
+Leafbind is distributed under the MIT License; see LICENSE. Its
 executables also contain the third-party software listed here, each under its
 own license, reproduced in full below.
 
