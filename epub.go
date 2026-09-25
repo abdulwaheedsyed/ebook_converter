@@ -34,6 +34,7 @@ type Page struct {
 	Size   Size   // size of the encoded image
 	Source Size   // size PDFium rendered
 	Orient string // orientation of the source page
+	Thumb  []byte // small preview JPEG; first page only, not packaged
 }
 
 // esc escapes text for both element content and attribute values;

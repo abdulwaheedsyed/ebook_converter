@@ -12,6 +12,10 @@ type testPage struct {
 	Rotate int     // /Rotate
 	BG     *RGB    // page background; nil leaves it white
 	Bar    bool    // a black bar across the top third, as stand-in "text"
+	Text   bool    // a line of real text
+	// Scan, when set, makes the page a single greyscale image of this many
+	// pixels, drawn over the whole page, like a scanned book.
+	Scan *Size
 }
 
 // makePDF writes a minimal, valid PDF with exact cross-reference offsets, so
@@ -27,7 +31,7 @@ func makePDF(pages []testPage) []byte {
 	b.WriteString("%PDF-1.4\n")
 	kids := make([]string, len(pages))
 	for i := range pages {
-		kids[i] = fmt.Sprintf("%d 0 R", 3+2*i)
+		kids[i] = fmt.Sprintf("%d 0 R", 3+3*i)
 	}
 	obj("<< /Type /Catalog /Pages 2 0 R >>")
 	obj(fmt.Sprintf("<< /Type /Pages /Kids [%s] /Count %d >>", strings.Join(kids, " "), len(pages)))
@@ -41,9 +45,32 @@ func makePDF(pages []testPage) []byte {
 		if p.Bar {
 			fmt.Fprintf(&c, "0 0 0 rg %g %g %g %g re f\n", p.W*0.1, p.H*0.7, p.W*0.8, p.H*0.1)
 		}
-		obj(fmt.Sprintf("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 %g %g] /Rotate %d /Resources << >> /Contents %d 0 R >>",
-			p.W, p.H, p.Rotate, 4+2*i))
+		if p.Scan != nil {
+			fmt.Fprintf(&c, "q %g 0 0 %g 0 0 cm /Im0 Do Q\n", p.W, p.H)
+		}
+		if p.Text {
+			fmt.Fprintf(&c, "BT /F0 12 Tf 20 20 Td (Hello) Tj ET\n")
+		}
+		res := "<< >>"
+		switch {
+		case p.Scan != nil:
+			res = fmt.Sprintf("<< /XObject << /Im0 %d 0 R >> >>", 5+3*i)
+		case p.Text:
+			res = fmt.Sprintf("<< /Font << /F0 %d 0 R >> >>", 5+3*i)
+		}
+		obj(fmt.Sprintf("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 %g %g] /Rotate %d /Resources %s /Contents %d 0 R >>",
+			p.W, p.H, p.Rotate, res, 4+3*i))
 		obj(fmt.Sprintf("<< /Length %d >>\nstream\n%sendstream", c.Len(), c.String()))
+		switch {
+		case p.Scan != nil:
+			px := bytes.Repeat([]byte{200}, p.Scan.W*p.Scan.H)
+			obj(fmt.Sprintf("<< /Type /XObject /Subtype /Image /Width %d /Height %d /ColorSpace /DeviceGray /BitsPerComponent 8 /Length %d >>\nstream\n%s\nendstream",
+				p.Scan.W, p.Scan.H, len(px), px))
+		case p.Text:
+			obj("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>")
+		default:
+			obj("<< >>") // keep object numbering regular
+		}
 	}
 
 	xref := b.Len()

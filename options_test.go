@@ -40,7 +40,7 @@ func TestParseArgsDefaults(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if o.DPI != 180 || o.MaxEdge != 2560 || o.Quality != 92 || o.Direction != "ltr" || o.Lang != "en" || !o.Validate || !o.Epubcheck {
+	if o.DPI != dpiAuto || o.MaxEdge != 2560 || o.Quality != 92 || o.Direction != "ltr" || o.Lang != "en" || !o.Validate || !o.Epubcheck {
 		t.Errorf("unexpected defaults: %+v", o)
 	}
 }
@@ -61,6 +61,42 @@ func TestParseArgsErrors(t *testing.T) {
 	for name, args := range cases {
 		if _, err := parseArgs(args); err == nil || errors.Is(err, errHelp) {
 			t.Errorf("%s: expected an error for %q", name, strings.Join(args, " "))
+		}
+	}
+}
+
+func TestParseArgsDPI(t *testing.T) {
+	for arg, want := range map[string]int{"auto": dpiAuto, "150": 150, "300": 300} {
+		o, err := parseArgs([]string{"--dpi", arg, "a.pdf", "b.epub"})
+		if err != nil || o.DPI != want {
+			t.Errorf("--dpi %s: got %d, %v; want %d", arg, o.DPI, err, want)
+		}
+	}
+	for _, bad := range []string{"0", "17", "1201", "high"} {
+		if _, err := parseArgs([]string{"--dpi", bad, "a.pdf", "b.epub"}); err == nil {
+			t.Errorf("--dpi %s: expected an error", bad)
+		}
+	}
+}
+
+func TestGUIRequested(t *testing.T) {
+	cases := []struct {
+		args      []string
+		gui, nobr bool
+	}{
+		{nil, true, false},
+		{[]string{"-psn_0_12345"}, true, false},
+		{[]string{"--gui"}, true, false},
+		{[]string{"--gui", "--no-browser"}, true, true},
+		{[]string{"--no-browser"}, true, true},
+		{[]string{"a.pdf", "b.epub"}, false, false},
+		{[]string{"--help"}, false, false},
+		{[]string{"--gui", "a.pdf"}, false, false},
+	}
+	for _, c := range cases {
+		g, ok := guiRequested(c.args)
+		if ok != c.gui || g.NoBrowser != c.nobr {
+			t.Errorf("guiRequested(%q) = %v, %+v; want gui=%v noBrowser=%v", c.args, ok, g, c.gui, c.nobr)
 		}
 	}
 }

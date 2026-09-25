@@ -9,12 +9,28 @@ text is not an option.
 It is a single static executable with no runtime dependencies: no poppler, no
 ImageMagick, no zip tool, no Java.
 
+## Why this tool exists
+
+Amazon's Kindle Previewer converts an EPUB into a Kindle book, but it does not
+convert a PDF into an EPUB. A PDF has to become a fixed-layout EPUB some other
+way first, and doing that well — every page kept intact, the right
+orientation, no stretched or split pages, and the metadata Kindle's
+fixed-layout support relies on — is fiddly. ebook_converter was developed to
+fill that gap: it turns the PDF into the fixed-layout EPUB that Kindle
+Previewer, or Send to Kindle, can then take the rest of the way.
+
 ## Features
 
+- **Graphical interface or command line.** Double-click it for a desktop
+  app with drag and drop, cover previews and live progress; give it
+  arguments and it is a scriptable command-line tool.
 - **Orientation detected per book.** Landscape decks come out landscape and
   portrait books portrait, including pages that use the PDF `/Rotate` flag.
 - **No stretching, no split pages.** Pages of differing sizes are scaled to fit
   one canvas and letterboxed, never distorted.
+- **Resolution chosen for you.** A scanned PDF is rendered at its own
+  resolution, so pages are neither upscaled nor blurred; everything else at
+  180 DPI.
 - **E-ink options.** 8-bit greyscale, and flattening of tinted page backgrounds
   to white for better contrast.
 - **Right-to-left or left-to-right** page progression.
@@ -62,7 +78,33 @@ make package      # release archives and SHA256SUMS, into dist/
 No C compiler is needed for any target: the build is pure Go with
 `CGO_ENABLED=0`.
 
-## Usage
+## The graphical interface
+
+Double-click `ebook_converter`, or run it without arguments. It opens a
+window where you drop in PDFs, review each book's title, and choose the
+language, page order, colour and quality. Converted books are validated and
+offered for download, one at a time or all together. The window follows the
+system's light or dark theme.
+
+The interface is a small web app built into the binary. It opens in an app
+window of Chrome, Edge, Chromium or Brave when one is installed, and in the
+default browser otherwise. Set `EBOOK_CONVERTER_BROWSER` to `default` to
+always use the default browser, or to the path of a Chromium-based browser
+to use that one. Closing the window, or choosing Quit, ends the program.
+
+`--no-browser` prints the interface's address instead of opening it, which
+suits a machine you reach over SSH:
+
+```bash
+ebook_converter --no-browser
+```
+
+The interface only listens on `127.0.0.1`, and every request must carry a
+random token that is new each time it starts, so other users on the machine
+and web pages open in the browser cannot reach it. PDFs you add are kept in a
+temporary folder that is deleted when the program exits.
+
+## Command line
 
 ```bash
 ebook_converter [options] input.pdf output.epub
@@ -73,7 +115,7 @@ Options may appear anywhere on the command line, as `--name value`,
 
 | Option | Default | Meaning |
 | --- | --- | --- |
-| `--dpi N` | `180` | Render resolution. See [Choosing a DPI](#choosing-a-dpi). |
+| `--dpi N\|auto` | `auto` | Render resolution. `auto` uses a scan's own resolution, otherwise 180. See [Choosing a DPI](#choosing-a-dpi). |
 | `--max-edge N` | `2560` | Cap on the longest canvas edge in pixels; `0` disables the cap. |
 | `--quality N` | `92` | JPEG quality, 1–100. |
 | `--grayscale` | off | 8-bit greyscale for e-ink. Aliases: `--greyscale`, `--mono`. |
@@ -87,6 +129,8 @@ Options may appear anywhere on the command line, as `--name value`,
 | `--no-validate` | off | Skip all validation. |
 | `--no-epubcheck` | off | Skip the external epubcheck even when it is installed. |
 | `-v`, `--verbose` | off | Print one line per page. |
+| `--gui` | | Open the graphical interface; the same as giving no arguments. |
+| `--no-browser` | | With the interface, print its address instead of opening it. |
 | `--version` | | Print the version. |
 | `--licenses` | | Print the license and third-party notices. |
 
@@ -113,10 +157,10 @@ A book printed on a tinted background:
 ebook_converter --grayscale --flatten-bg book.pdf book.epub
 ```
 
-A scanned book, rendered at the scan's native resolution:
+A book whose small print should stay sharp when zoomed:
 
 ```bash
-ebook_converter --grayscale --dpi 150 scan.pdf scan.epub
+ebook_converter --grayscale --dpi 300 book.pdf book.epub
 ```
 
 A smaller file, at some cost in sharpness:
@@ -139,41 +183,44 @@ Get-ChildItem *.pdf | ForEach-Object { ebook_converter --grayscale $_.FullName (
 
 ## Choosing a DPI
 
-The default of 180 DPI suits a PDF whose pages are vector text, where
-rendering at a higher resolution resolves more detail.
+The default, `auto`, looks at the PDF first. Nine pages spread through it
+are sampled: when every one is a single image covering the page, with no
+text, the PDF is a scan, and it is rendered at the median resolution of
+those images. Rendering a scan any higher only interpolates — a larger file
+with no more detail — and any lower throws detail away. Covers are often
+scanned finer than the body, which is why the median is used. Every other
+PDF is rendered at 180 DPI, which suits vector text on a Kindle screen.
 
-A scanned PDF is different: each page is an image with a fixed resolution, and
-rendering above it only interpolates. That makes a larger file with no more
-detail, which the reader then rescales anyway. It is better to ship the scan's
-native pixels and let the device scale once.
+The GUI shows a "Scan" badge with the detected resolution when you add a
+file, and the command line reports it:
 
-To tell which kind a PDF is, with poppler's tools where available:
-
-```bash
-pdftotext -f 1 -l 5 book.pdf - | wc -w   # no words: the pages are images
-pdfimages -list -f 1 -l 5 book.pdf       # a scan: shows each image's ppi
+```text
+Resolution  : 150 DPI (scan, native resolution)
 ```
 
-If the pages are single images, pass their ppi as `--dpi`.
+Pass a number to override it, for instance `--dpi 300` for small vector text
+that should stay crisp when zoomed.
 
 ## How it works
 
-1. **Measure.** Each page's pixel size at `--dpi` is taken from the PDF
+1. **Choose a resolution.** With `--dpi auto`, sample the pages to decide
+   whether the PDF is a scan, as described above.
+2. **Measure.** Each page's pixel size at that resolution is taken from the PDF
    engine, including any `/Rotate`, so a rotated page is never mistaken for the
    wrong orientation.
-2. **Pick a canvas.** The canvas starts from the most common page size, grows
+3. **Pick a canvas.** The canvas starts from the most common page size, grows
    if needed to contain the largest page at that same aspect ratio, is capped
    at `--max-edge`, and is rounded down to even dimensions.
-3. **Render and fit.** Pages are rendered in parallel, scaled to fit inside
+4. **Render and fit.** Pages are rendered in parallel, scaled to fit inside
    the canvas with their aspect ratio intact, and padded out to its exact size.
    Nothing is cropped or stretched. The padding colour is sampled from the edge
    being padded, so letterbox bars blend with the page.
-4. **Convert.** Optionally greyscale and background flattening.
-5. **Encode.** Each page is written as a baseline JPEG with Huffman tables
+5. **Convert.** Optionally greyscale and background flattening.
+6. **Encode.** Each page is written as a baseline JPEG with Huffman tables
    optimised for that page.
-6. **Package.** Standard EPUB 3 fixed-layout metadata, plus Kindle's own
+7. **Package.** Standard EPUB 3 fixed-layout metadata, plus Kindle's own
    fixed-layout metadata. Page 1 becomes the cover.
-7. **Validate** the package that was written.
+8. **Validate** the package that was written.
 
 ### Why one canvas
 
@@ -244,7 +291,10 @@ There is no PDF rasteriser in Go's standard library, so rendering uses
 [go-pdfium](https://github.com/klippa-app/go-pdfium): Google's PDFium, compiled
 to WebAssembly and run inside the process by
 [wazero](https://github.com/tetratelabs/wazero), a pure-Go WebAssembly
-runtime. This is what keeps the binary free of cgo and system libraries.
+runtime. This is what keeps the binary free of cgo and system libraries. The
+graphical interface uses an installed web browser to draw its window; see
+[TODO.md](TODO.md) for the plan to replace that, and the other remaining
+external tools, with built-in equivalents.
 
 The PDF engine runs sandboxed with no filesystem access; the PDF is passed to
 it in memory. JPEG encoding is the program's own. Everything else — colour
@@ -268,8 +318,9 @@ listed at the wrong version, so the notices cannot silently go stale.
 
 The end-to-end tests generate their own PDFs, so no sample documents are
 needed. They cover landscape and portrait detection, `/Rotate`, pages of
-differing sizes, `--mixed`, greyscale with background flattening, and invalid
-input. The validator is tested against deliberately broken packages. The
+differing sizes, `--mixed`, greyscale with background flattening, scan
+detection, and invalid input. The GUI server is tested for its security
+checks and for a whole add, convert and download round trip. The validator is tested against deliberately broken packages. The
 JPEG encoder is tested for lossless optimisation, valid length-limited code
 tables, minimal padding blocks, and quality against `image/jpeg`.
 

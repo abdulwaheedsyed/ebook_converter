@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>eBook Converter</title>
+<link rel="icon" href="/assets/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/assets/app.css">
+<script src="/assets/app.js" defer></script>
+</head>
+<body>
+<svg class="sprite" aria-hidden="true">
+  <symbol id="i-logo" viewBox="0 0 32 32"><rect x="1" y="1" width="30" height="30" rx="8" fill="var(--accent)"/><path d="M9 9.5c2.6-1 5-.7 7 1v12.2c-2-1.6-4.4-1.9-7-1V9.5zM23 9.5c-2.6-1-5-.7-7 1v12.2c2-1.6 4.4-1.9 7-1V9.5z" fill="none" stroke="var(--on-accent)" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 15V4M7.5 8.5 12 4l4.5 4.5M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M4 17v1a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-1"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9.5 7V4.5h5V7M6.5 7l.9 12.2a1 1 0 0 0 1 .8h7.2a1 1 0 0 0 1-.8L17.5 7M10 11v5M14 11v5"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5 10 17l9-10"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3.5 2.5 20h19zM12 10v4.5M12 17.2v.1"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3M19.5 4v4.5H15"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6 6 6M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></symbol>
+  <symbol id="i-auto" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12.5" rx="2"/><path d="M8.5 20h7M12 16.5V20"/></symbol>
+  <symbol id="i-power" viewBox="0 0 24 24"><path d="M12 3v8.5M7.2 6a7.5 7.5 0 1 0 9.6 0"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 7.8v.1"/></symbol>
+  <symbol id="i-scan" viewBox="0 0 24 24"><path d="M4 8V5.5A1.5 1.5 0 0 1 5.5 4H8M16 4h2.5A1.5 1.5 0 0 1 20 5.5V8M20 16v2.5a1.5 1.5 0 0 1-1.5 1.5H16M8 20H5.5A1.5 1.5 0 0 1 4 18.5V16M4 12h16"/></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+</svg>
+
+<header class="bar">
+  <div class="brand">
+    <svg class="logo"><use href="#i-logo"/></svg>
+    <div>
+      <h1>eBook Converter</h1>
+      <p>PDF to Kindle fixed-layout EPUB</p>
+    </div>
+  </div>
+  <div class="bar-actions">
+    <span class="engine" id="engine" role="status" hidden><span class="spinner"></span>Starting PDF engine…</span>
+    <button class="icon-btn" id="theme" type="button" title="Theme"><svg><use href="#i-auto"/></svg></button>
+    <button class="icon-btn" id="about" type="button" title="About"><svg><use href="#i-info"/></svg></button>
+    <button class="icon-btn" id="quit" type="button" title="Quit eBook Converter"><svg><use href="#i-power"/></svg></button>
+  </div>
+</header>
+
+<main class="layout">
+  <section class="files" aria-label="Files">
+    <label class="drop" id="drop">
+      <input type="file" id="picker" accept="application/pdf,.pdf" multiple>
+      <span class="drop-icon"><svg><use href="#i-upload"/></svg></span>
+      <span class="drop-title">Drop PDFs here</span>
+      <span class="drop-sub">or <span class="link">browse your computer</span> · many files at once is fine</span>
+    </label>
+
+    <ol class="steps" aria-label="How it works">
+      <li><b>1</b><div><h3>Add PDFs</h3><p>Scans, slide decks and books. Each keeps its exact layout.</p></div></li>
+      <li><b>2</b><div><h3>Check the settings</h3><p>Language, page order and colour. The defaults suit most books.</p></div></li>
+      <li><b>3</b><div><h3>Convert and download</h3><p>Every book is validated before it is ready for your Kindle.</p></div></li>
+    </ol>
+
+    <div class="list-head" id="list-head" hidden>
+      <h2 id="count">Files</h2>
+      <div class="list-actions">
+        <button class="btn ghost" id="clear-done" type="button">Clear finished</button>
+        <a class="btn" id="download-all" hidden><svg><use href="#i-download"/></svg>Download all</a>
+      </div>
+    </div>
+    <ol class="list" id="list" aria-live="polite"></ol>
+  </section>
+
+  <aside class="panel" aria-label="Settings">
+    <form id="settings" novalidate>
+      <fieldset>
+        <legend>Language &amp; reading</legend>
+        <label class="field">
+          <span>Language</span>
+          <select id="lang">
+            <option value="en">English</option>
+            <option value="ar">Arabic</option>
+            <option value="ur">Urdu</option>
+            <option value="ur-Latn">Urdu (Roman script)</option>
+            <option value="fa">Persian</option>
+            <option value="he">Hebrew</option>
+            <option value="bn">Bengali</option>
+            <option value="de">German</option>
+            <option value="es">Spanish</option>
+            <option value="fr">French</option>
+            <option value="hi">Hindi</option>
+            <option value="id">Indonesian</option>
+            <option value="it">Italian</option>
+            <option value="ja">Japanese</option>
+            <option value="ko">Korean</option>
+            <option value="ms">Malay</option>
+            <option value="nl">Dutch</option>
+            <option value="pt">Portuguese</option>
+            <option value="ru">Russian</option>
+            <option value="tr">Turkish</option>
+            <option value="zh">Chinese</option>
+            <option value="other">Other…</option>
+          </select>
+        </label>
+        <label class="field" id="lang-other-row" hidden>
+          <span>Language tag</span>
+          <input id="lang-other" placeholder="for example sw or pt-BR" spellcheck="false" autocomplete="off">
+        </label>
+        <div class="field">
+          <span id="dir-label">Page order</span>
+          <div class="segmented" role="radiogroup" aria-labelledby="dir-label">
+            <label><input type="radio" name="direction" value="ltr"><span>Left to right</span></label>
+            <label><input type="radio" name="direction" value="rtl"><span>Right to left</span></label>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Appearance</legend>
+        <div class="field">
+          <span id="colour-label">Colour</span>
+          <div class="segmented" role="radiogroup" aria-labelledby="colour-label">
+            <label><input type="radio" name="colour" value="grey"><span>Greyscale</span></label>
+            <label><input type="radio" name="colour" value="colour"><span>Colour</span></label>
+          </div>
+          <small>Greyscale suits e-ink Kindles and makes smaller files.</small>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="flatten">
+          <span class="track"></span>
+          <span class="text">Whiten tinted pages<small>Turns a coloured page background white, for contrast on e-ink.</small></span>
+        </label>
+        <label class="field">
+          <span>Orientation</span>
+          <select id="orientation">
+            <option value="">Automatic</option>
+            <option value="portrait">Portrait</option>
+            <option value="landscape">Landscape</option>
+          </select>
+        </label>
+      </fieldset>
+
+      <fieldset>
+        <legend>Image quality</legend>
+        <label class="field">
+          <span>Resolution</span>
+          <select id="dpi">
+            <option value="0">Automatic (recommended)</option>
+            <option value="150">150 DPI</option>
+            <option value="180">180 DPI</option>
+            <option value="220">220 DPI</option>
+            <option value="300">300 DPI</option>
+          </select>
+          <small>Automatic keeps scans at their own resolution.</small>
+        </label>
+        <label class="field">
+          <span class="with-value">JPEG quality <output id="quality-out">92</output></span>
+          <input type="range" id="quality" min="60" max="100" step="1">
+        </label>
+        <label class="field">
+          <span>Largest page size</span>
+          <select id="maxEdge">
+            <option value="1920">1920 pixels</option>
+            <option value="2560">2560 pixels</option>
+            <option value="3200">3200 pixels</option>
+            <option value="0">No limit</option>
+          </select>
+        </label>
+      </fieldset>
+
+      <details class="advanced">
+        <summary><svg><use href="#i-chevron"/></svg>Advanced</summary>
+        <label class="switch">
+          <input type="checkbox" id="mixed">
+          <span class="track"></span>
+          <span class="text">Keep each page's own size<small>For books that mix portrait and landscape. Kindle handles these poorly.</small></span>
+        </label>
+        <label class="switch">
+          <input type="checkbox" id="validate">
+          <span class="track"></span>
+          <span class="text">Validate each book<small id="epubcheck-note">Checks the finished EPUB.</small></span>
+        </label>
+        <button class="btn ghost small" id="reset" type="button">Restore defaults</button>
+      </details>
+    </form>
+
+    <div class="panel-foot">
+      <p id="summary">Add PDFs to begin.</p>
+      <button class="btn primary big" id="convert" type="button" disabled>Convert</button>
+    </div>
+  </aside>
+</main>
+
+<div class="drag-veil" id="veil" hidden><div><svg><use href="#i-upload"/></svg><p>Drop to add</p></div></div>
+
+<dialog id="about-dialog">
+  <form method="dialog">
+    <header><svg class="logo"><use href="#i-logo"/></svg><div><h2>eBook Converter</h2><p id="about-version"></p></div></header>
+    <p>Turns PDFs into fixed-layout EPUB 3 books for Kindle. Every page keeps its exact layout.</p>
+    <p>Released under the MIT License. It includes third-party software — Go, PDFium and others — under their own licenses.</p>
+    <p class="about-credits">This software is based in part on the work of the FreeType Team and of the Independent JPEG Group.</p>
+    <menu>
+      <a class="btn ghost" id="licenses" target="_blank" rel="noopener">View licenses</a>
+      <button class="btn primary" value="close">Close</button>
+    </menu>
+  </form>
+</dialog>
+
+<div class="stopped" id="stopped" hidden>
+  <div>
+    <svg class="logo"><use href="#i-logo"/></svg>
+    <h2>eBook Converter has closed</h2>
+    <p>You can close this window.</p>
+  </div>
+</div>
+
+<div class="toasts" id="toasts" aria-live="assertive"></div>
+
+<template id="t-job">
+  <li class="job">
+    <div class="cover"><img alt="" hidden><svg class="placeholder"><use href="#i-file"/></svg></div>
+    <div class="body">
+      <div class="title-row">
+        <input class="title" aria-label="Book title" spellcheck="false">
+        <span class="badge"></span>
+      </div>
+      <p class="meta"></p>
+      <div class="progress" hidden><div class="fill"></div></div>
+      <p class="stage"></p>
+      <div class="result" hidden>
+        <p class="stats"></p>
+        <details class="report" hidden><summary></summary><ul></ul></details>
+      </div>
+      <p class="error" hidden></p>
+    </div>
+    <div class="actions">
+      <a class="btn primary small download" hidden><svg><use href="#i-download"/></svg>Download</a>
+      <button class="icon-btn again" type="button" title="Convert again with the current settings" hidden><svg><use href="#i-refresh"/></svg></button>
+      <button class="icon-btn remove" type="button" title="Remove"><svg><use href="#i-trash"/></svg></button>
+    </div>
+  </li>
+</template>
+</body>
+</html>

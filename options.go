@@ -37,7 +37,7 @@ type Options struct {
 
 func defaultOptions() Options {
 	return Options{
-		DPI:       180,
+		DPI:       dpiAuto,
 		MaxEdge:   2560,
 		Quality:   92,
 		Lang:      "en",
@@ -47,6 +47,13 @@ func defaultOptions() Options {
 		Jobs:      min(runtime.NumCPU(), 6),
 	}
 }
+
+// dpiAuto selects the resolution per document: a scan's native resolution,
+// otherwise defaultDPI.
+const (
+	dpiAuto    = 0
+	defaultDPI = 180
+)
 
 var (
 	errHelp     = errors.New("help requested")
@@ -58,9 +65,15 @@ const usageText = `Convert a PDF into a Kindle-compatible fixed-layout EPUB 3.
 
 Usage:
   ebook_converter [options] input.pdf output.epub
+  ebook_converter                     open the graphical interface
+
+Run without arguments, or double-click it, to use the graphical interface.
+--gui opens it explicitly; --no-browser prints its address instead of
+opening a window.
 
 Options:
-  --dpi N            Render resolution               (default 180)
+  --dpi N|auto       Render resolution; auto uses a scan's native
+                     resolution, otherwise 180       (default auto)
   --max-edge N       Cap the longest canvas edge     (default 2560, 0 = no cap)
   --quality N        JPEG quality 1-100              (default 92)
   --grayscale        8-bit greyscale for e-ink       (also --greyscale, --mono)
@@ -106,7 +119,18 @@ func parseArgs(args []string) (Options, error) {
 	flat := boolFlag(func() { o.FlattenBG = true })
 
 	flags := map[string]spec{
-		"dpi":                intFlag(&o.DPI, 18, 1200, "dpi"),
+		"dpi": {true, func(v string) error {
+			if v == "auto" {
+				o.DPI = dpiAuto
+				return nil
+			}
+			n, err := strconv.Atoi(v)
+			if err != nil || n < 18 || n > 1200 {
+				return fmt.Errorf("--dpi must be auto or a whole number from 18 to 1200, got %q", v)
+			}
+			o.DPI = n
+			return nil
+		}},
 		"max-edge":           intFlag(&o.MaxEdge, 0, 20000, "max-edge"),
 		"quality":            intFlag(&o.Quality, 1, 100, "quality"),
 		"jobs":               intFlag(&o.Jobs, 1, 64, "jobs"),

@@ -12,8 +12,13 @@ import (
 	"testing"
 )
 
-// convertPDF runs the whole pipeline on a synthetic PDF.
+// convertPDF runs the whole pipeline on a synthetic PDF at a low DPI.
 func convertPDF(t *testing.T, pages []testPage, extra ...string) (Options, []byte) {
+	t.Helper()
+	return convertPDFAt(t, pages, "36", extra...)
+}
+
+func convertPDFAt(t *testing.T, pages []testPage, dpi string, extra ...string) (Options, []byte) {
 	t.Helper()
 	if testing.Short() {
 		t.Skip("starts the PDF engine; skipped with -short")
@@ -26,7 +31,7 @@ func convertPDF(t *testing.T, pages []testPage, extra ...string) (Options, []byt
 	}
 	// Low DPI keeps the test fast; --no-epubcheck keeps it independent of
 	// what happens to be installed.
-	args := append([]string{"--dpi", "36", "--no-epubcheck", "--jobs", "2"}, extra...)
+	args := append([]string{"--dpi", dpi, "--no-epubcheck", "--jobs", "2", "--max-edge", "0"}, extra...)
 	o, err := parseArgs(append(args, in, out))
 	if err != nil {
 		t.Fatal(err)
@@ -166,5 +171,47 @@ func TestConvertRejectsNonPDF(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(dir, "out.epub")); err == nil {
 		t.Error("no output should be written when conversion fails")
+	}
+}
+
+// A PDF whose pages are each one full-page image is treated as a scan, and
+// automatic resolution renders it at the images' own resolution.
+func TestAutoDPIUsesScanResolution(t *testing.T) {
+	// 612 x 792 pt (US Letter) holding 1275 x 1650 px images is 150 ppi.
+	scan := &Size{1275, 1650}
+	pages := []testPage{{W: 612, H: 792, Scan: scan}, {W: 612, H: 792, Scan: scan}, {W: 612, H: 792, Scan: scan}}
+	_, data := convertPDFAt(t, pages, "auto")
+	// 1275 x 1650 at 150 DPI; the canvas rounds odd sizes down to even.
+	for _, s := range pageImages(t, data) {
+		if s != (Size{1274, 1650}) {
+			t.Errorf("scan rendered at %v, want 1274x1650 (150 DPI)", s)
+		}
+	}
+}
+
+// Pages with text are not scans, so automatic resolution uses the default.
+func TestAutoDPIKeepsDefaultForText(t *testing.T) {
+	_, data := convertPDFAt(t, []testPage{{W: 612, H: 792, Text: true}}, "auto")
+	want := Size{1530, 1980} // 612 x 792 pt at 180 DPI
+	for _, s := range pageImages(t, data) {
+		if s != want {
+			t.Errorf("text page rendered at %v, want %v", s, want)
+		}
+	}
+}
+
+// Covers are often scanned finer than the body. The body's resolution wins.
+func TestAutoDPIIgnoresFinerCovers(t *testing.T) {
+	cover, body := &Size{2550, 3300}, &Size{1275, 1650} // 300 and 150 ppi
+	pages := []testPage{{W: 612, H: 792, Scan: cover}}
+	for range 6 {
+		pages = append(pages, testPage{W: 612, H: 792, Scan: body})
+	}
+	pages = append(pages, testPage{W: 612, H: 792, Scan: cover})
+	_, data := convertPDFAt(t, pages, "auto")
+	for _, s := range pageImages(t, data) {
+		if s != (Size{1274, 1650}) {
+			t.Fatalf("rendered at %v, want the body's 150 DPI (1274x1650)", s)
+		}
 	}
 }
