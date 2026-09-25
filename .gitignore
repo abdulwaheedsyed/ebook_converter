@@ -1,0 +1,9 @@
+# build output
+/dist/
+/ebook_converter
+/ebook_converter.exe
+
+# never commit converted books or test output
+*.epub
+*.pdf
+!testdata/*.pdf
