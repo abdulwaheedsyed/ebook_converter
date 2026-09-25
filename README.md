@@ -58,8 +58,8 @@ Options may appear anywhere on the command line, as `--name value`,
 | `--grayscale` | off | 8-bit greyscale for e-ink. Aliases: `--greyscale`, `--mono`. |
 | `--flatten-bg` | off | Force a flat, tinted page background to white. Aliases: `--white-bg`, `--flatten-background`. |
 | `--title TEXT` | file name | Book title. |
-| `--lang CODE` | `ur` | BCP 47 language tag, such as `en`, `ar`, `ur` or `ur-Latn`. |
-| `--ltr` | RTL | Left-to-right page progression. `--rtl` selects the default explicitly. |
+| `--lang CODE` | `en` | BCP 47 language tag, such as `en`, `ar`, `ur` or `ur-Latn`. |
+| `--rtl` | LTR | Right-to-left page progression, for Arabic, Urdu, Hebrew and similar. `--ltr` selects the default explicitly. |
 | `--orientation X` | detected | Force `portrait`, `landscape`, `auto` or `none`. |
 | `--mixed` | off | Keep each page's own canvas instead of one shared canvas. |
 | `--jobs N` | CPUs, max 6 | Pages rendered in parallel. |
@@ -74,16 +74,16 @@ Exit status is `0` on success, `1` when conversion or validation fails, and
 
 ## Examples
 
-A right-to-left book such as Urdu or Arabic, in greyscale for e-ink:
+A book in greyscale for e-ink:
 
 ```bash
-ebook_converter --grayscale --lang ar --title "Book Title" book.pdf book.epub
+ebook_converter --grayscale --title "Book Title" book.pdf book.epub
 ```
 
-A left-to-right book:
+A right-to-left book, such as Arabic or Urdu:
 
 ```bash
-ebook_converter --grayscale --ltr --lang en --title "Book Title" book.pdf book.epub
+ebook_converter --grayscale --rtl --lang ar --title "Book Title" book.pdf book.epub
 ```
 
 A book printed on a tinted background:

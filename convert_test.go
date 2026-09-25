@@ -91,7 +91,7 @@ func TestConvertLandscape(t *testing.T) {
 		`<meta name="orientation-lock" content="landscape"/>`,
 		`<meta name="original-resolution" content="480x270"/>`,
 		`properties="cover-image"`,
-		`page-progression-direction="rtl"`,
+		`page-progression-direction="ltr"`,
 	} {
 		if !strings.Contains(opf, want) {
 			t.Errorf("content.opf is missing %s", want)

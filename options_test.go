@@ -7,14 +7,14 @@ import (
 )
 
 func TestParseArgsOptionsAnywhere(t *testing.T) {
-	o, err := parseArgs([]string{"in.pdf", "--grayscale", "out.epub", "--dpi=150", "--lang", "ur-Latn", "--ltr", "-v"})
+	o, err := parseArgs([]string{"in.pdf", "--grayscale", "out.epub", "--dpi=150", "--lang", "ar", "--rtl", "-v"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if o.Input != "in.pdf" || o.Output != "out.epub" {
 		t.Errorf("positionals = %q %q", o.Input, o.Output)
 	}
-	if !o.Grayscale || o.DPI != 150 || o.Lang != "ur-Latn" || o.Direction != "ltr" || !o.Verbose {
+	if !o.Grayscale || o.DPI != 150 || o.Lang != "ar" || o.Direction != "rtl" || !o.Verbose {
 		t.Errorf("options not applied: %+v", o)
 	}
 	if o.Title != "in" {
@@ -40,7 +40,7 @@ func TestParseArgsDefaults(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if o.DPI != 180 || o.MaxEdge != 2560 || o.Quality != 92 || o.Direction != "rtl" || o.Lang != "ur" || !o.Validate || !o.Epubcheck {
+	if o.DPI != 180 || o.MaxEdge != 2560 || o.Quality != 92 || o.Direction != "ltr" || o.Lang != "en" || !o.Validate || !o.Epubcheck {
 		t.Errorf("unexpected defaults: %+v", o)
 	}
 }

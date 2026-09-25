@@ -40,8 +40,8 @@ func defaultOptions() Options {
 		DPI:       180,
 		MaxEdge:   2560,
 		Quality:   92,
-		Lang:      "ur",
-		Direction: "rtl",
+		Lang:      "en",
+		Direction: "ltr",
 		Validate:  true,
 		Epubcheck: true,
 		Jobs:      min(runtime.NumCPU(), 6),
@@ -66,8 +66,8 @@ Options:
   --grayscale        8-bit greyscale for e-ink       (also --greyscale, --mono)
   --flatten-bg       Tinted page background -> white (also --white-bg)
   --title TEXT       Book title                      (default: PDF file name)
-  --lang CODE        BCP 47 language code            (default ur)
-  --ltr              Left-to-right reading order     (default is RTL; --rtl)
+  --lang CODE        BCP 47 language code            (default en)
+  --rtl              Right-to-left reading order     (default is LTR; --ltr)
   --orientation X    Force portrait, landscape, auto or none
   --mixed            Keep per-page canvases instead of one shared canvas
   --jobs N           Pages rendered in parallel      (default: CPUs, max 6)
