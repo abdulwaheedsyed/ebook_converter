@@ -252,6 +252,25 @@ func TestGUIConvertFlow(t *testing.T) {
 		if _, err := jpeg.Decode(cov.Body); err != nil {
 			t.Errorf("%s: cover is not a JPEG: %v", v.File, err)
 		}
+
+		// The preview reads the book back, and serves its pages.
+		var pb previewBook
+		pr := req(t, "GET", base+"/api/jobs/"+id+"/preview?t="+s.token, nil, nil)
+		if err := json.NewDecoder(pr.Body).Decode(&pb); err != nil || len(pb.Pages) != 2 || pb.Direction != "rtl" {
+			t.Errorf("%s: preview %+v, %v", v.File, pb, err)
+		}
+		pg := req(t, "GET", base+"/api/jobs/"+id+"/pages/1?t="+s.token, nil, nil)
+		if m, err := jpeg.Decode(pg.Body); err != nil || m.Bounds().Dx() != pb.Pages[1].W {
+			t.Errorf("%s: page 2 of the preview: %v", v.File, err)
+		}
+		for _, n := range []string{"2", "-1", "x"} {
+			if res := req(t, "GET", base+"/api/jobs/"+id+"/pages/"+n+"?t="+s.token, nil, nil); res.StatusCode != 404 {
+				t.Errorf("%s: page %q: status %d, want 404", v.File, n, res.StatusCode)
+			}
+		}
+		if res := req(t, "GET", base+"/api/jobs/"+id+"/pages/0", nil, nil); res.StatusCode != 401 {
+			t.Errorf("%s: a page was served without the token: %d", v.File, res.StatusCode)
+		}
 	}
 
 	all := req(t, "GET", base+"/api/download-all?t="+s.token, nil, nil)
@@ -280,5 +299,23 @@ func TestGUIRejectsNonPDF(t *testing.T) {
 	got := waitJobs(t, ch, stateFailed, v[0].ID)
 	if got[v[0].ID].Error == "" {
 		t.Error("a file that is not a PDF should fail with a message")
+	}
+}
+
+// Settings saved by an older version have no contents choice; they get the
+// default, and an unknown choice is refused.
+func TestGUISettingsContents(t *testing.T) {
+	s := defaultSettings()
+	s.TOC = ""
+	if o, err := s.options("t", "in.pdf", "out.epub", 1); err != nil || o.TOC != tocBookmarks {
+		t.Errorf("empty contents setting: %q, %v", o.TOC, err)
+	}
+	s.TOC = tocPages
+	if o, err := s.options("t", "in.pdf", "out.epub", 1); err != nil || o.TOC != tocPages {
+		t.Errorf("pages: %q, %v", o.TOC, err)
+	}
+	s.TOC = "chapters"
+	if _, err := s.options("t", "in.pdf", "out.epub", 1); err == nil {
+		t.Error("an unknown contents setting was accepted")
 	}
 }

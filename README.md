@@ -45,6 +45,11 @@ Previewer, or Send to Kindle, can then take the rest of the way.
 - **E-ink options.** 8-bit greyscale, and flattening of tinted page backgrounds
   to white for better contrast.
 - **Right-to-left or left-to-right** page progression.
+- **A real table of contents.** The PDF's bookmarks become the book's
+  contents, nested as they are in the PDF, and its page labels (`iv`, `12`)
+  let the Kindle go to a page by its printed number.
+- **Page preview.** Flip through the finished book on a Kindle-sized screen
+  before sending it, to check every page fits the way you expect.
 - **Validates its own output**, and runs [epubcheck](https://github.com/w3c/epubcheck)
   as well when it is installed.
 - **Compact.** A built-in JPEG encoder builds Huffman tables for each page
@@ -97,6 +102,20 @@ language, page order, colour and quality. Converted books are validated and
 offered for download, one at a time or all together. The window follows the
 system's light or dark theme.
 
+**Preview** opens a finished book on a Kindle-sized screen, read back from the
+EPUB itself. Pages are scaled to fit the screen as a Kindle scales a
+fixed-layout page, so you can see how much of the screen each one fills, and
+whether a landscape page reads better with the Kindle turned sideways. Choose
+the Kindle model, turn it, jump through the contents, or turn pages with the
+arrow keys; a right-to-left book turns the other way. It does not replace
+Kindle Previewer's rendering, but it catches a page in the wrong orientation
+or a missing chapter before you send the book.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/leafbind-preview-dark.png">
+  <img src="docs/screenshots/leafbind-preview-light.png" alt="Leafbind's preview: a page of a novel on a Kindle Paperwhite-sized screen, with the book's chapters listed beside it and the current chapter highlighted.">
+</picture>
+
 The interface is a small web app built into the binary. It opens in an app
 window of Chrome, Edge, Chromium or Brave when one is installed, and in the
 default browser otherwise. Set `LEAFBIND_BROWSER` to `default` to
@@ -136,6 +155,7 @@ Options may appear anywhere on the command line, as `--name value`,
 | `--rtl` | LTR | Right-to-left page progression, for Arabic, Urdu, Hebrew and similar. `--ltr` selects the default explicitly. |
 | `--orientation X` | detected | Force `portrait`, `landscape`, `auto` or `none`. |
 | `--mixed` | off | Keep each page's own canvas instead of one shared canvas. |
+| `--toc X` | `bookmarks` | Table of contents: `bookmarks`, from the PDF's outline when it has one, otherwise one entry per page; or `pages`, always one entry per page. |
 | `--jobs N` | CPUs, max 6 | Pages rendered in parallel. |
 | `--no-validate` | off | Skip all validation. |
 | `--no-epubcheck` | off | Skip the external epubcheck even when it is installed. |
@@ -231,7 +251,11 @@ that should stay crisp when zoomed.
 6. **Encode.** Each page is written as a baseline JPEG with Huffman tables
    optimised for that page.
 7. **Package.** Standard EPUB 3 fixed-layout metadata, plus Kindle's own
-   fixed-layout metadata. Page 1 becomes the cover.
+   fixed-layout metadata. Page 1 becomes the cover. The table of contents
+   comes from the PDF's bookmarks, with their nesting; a bookmark that
+   leaves the document is left out, and one that only groups others opens
+   its first child's page. A page list, labelled with the PDF's page labels
+   where it has them, lets a reader go to a page by number.
 8. **Validate** the package that was written.
 
 ### Why one canvas

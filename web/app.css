@@ -324,6 +324,88 @@ dialog p { color: var(--text-2); font-size: 13.5px; }
 .about-credits { font-size: 12.5px; color: var(--muted); }
 dialog menu { display: flex; justify-content: flex-end; gap: 8px; margin: 18px 0 0; padding: 0; }
 
+/* ---------- page preview ---------- */
+.job.previewable .cover { cursor: zoom-in; }
+.job.previewable .cover:hover { border-color: var(--accent); }
+
+dialog.preview {
+  width: 100vw; height: 100vh; max-width: none; max-height: none; margin: 0;
+  border: 0; border-radius: 0; background: var(--bg);
+  display: none; grid-template-rows: auto minmax(0, 1fr) auto;
+}
+dialog.preview[open] { display: grid; }
+.pv-bar {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 10px 16px 10px 24px; background: var(--surface); border-bottom: 1px solid var(--border);
+}
+.pv-heading { min-width: 0; }
+.pv-heading h2 { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pv-heading p { margin: 1px 0 0; font-size: 12px; color: var(--muted); }
+.pv-tools { display: flex; align-items: center; gap: 6px; flex: none; }
+.pv-tools select { width: auto; height: 32px; font-size: 13px; }
+.pv-tools [aria-pressed="true"] { color: var(--accent-text); background: var(--accent-soft); }
+#pv-rotate svg { transition: transform .2s; }
+#pv-rotate[aria-pressed="true"] svg { transform: rotate(90deg); }
+
+.pv-main { display: flex; min-height: 0; }
+.pv-toc {
+  flex: none; width: 280px; overflow-y: auto; padding: 12px 8px;
+  background: var(--surface); border-right: 1px solid var(--border);
+}
+.pv-toc ol { list-style: none; margin: 0; padding: 0; }
+.pv-toc ol ol { padding-left: 14px; }
+.pv-toc button {
+  display: flex; align-items: baseline; gap: 10px; width: 100%; padding: 6px 10px;
+  font: 13px/1.35 var(--font); color: var(--text-2); text-align: start;
+  background: transparent; border: 0; border-radius: 6px; cursor: pointer;
+}
+.pv-toc button span { flex: 1; min-width: 0; }
+.pv-toc button small { flex: none; font-variant-numeric: tabular-nums; }
+.pv-toc button:hover { background: var(--sunken); color: var(--text); }
+.pv-toc button.current { background: var(--accent-soft); color: var(--accent-text); font-weight: 500; }
+
+.pv-stage {
+  flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center; gap: 16px;
+  background: var(--sunken);
+}
+.pv-stage:focus { outline: none; }
+.device {
+  flex: none; border-radius: 18px; background: #1d1d20;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, .06) inset, var(--shadow-lg);
+}
+.screen {
+  position: relative; overflow: hidden; cursor: pointer;
+  background: #f6f5f1; border-radius: 3px; box-shadow: 0 0 0 1px rgba(0, 0, 0, .5);
+}
+/* The Kindle scales a fixed-layout page to fit its screen, keeping its shape. */
+.screen img {
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain;
+  display: block; filter: grayscale(1); user-select: none;
+}
+.screen.colour img { filter: saturate(.7); }
+.pv-loading { position: absolute; top: calc(50% - 10px); left: calc(50% - 10px); width: 20px; height: 20px; }
+.pv-turn {
+  flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%;
+  color: var(--text-2); background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-sm);
+  cursor: pointer; transition: background .12s, color .12s, opacity .12s;
+}
+.pv-turn:hover:not(:disabled) { color: var(--text); border-color: var(--border-strong); }
+.pv-turn:disabled { opacity: .35; cursor: default; }
+.pv-turn.left svg { transform: rotate(180deg); }
+
+.pv-foot {
+  display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; justify-items: center;
+  padding: 10px 24px 12px; background: var(--surface); border-top: 1px solid var(--border);
+}
+.pv-foot input { width: min(720px, 100%); }
+.pv-foot p { margin: 0; font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; text-align: center; }
+#pv-pos { color: var(--text-2); font-weight: 500; }
+@media (max-width: 760px) {
+  .pv-toc { display: none; }
+  .pv-bar { padding-left: 16px; }
+  .pv-turn { width: 36px; height: 36px; }
+}
+
 .stopped { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; background: var(--bg); text-align: center; }
 .stopped .logo { width: 48px; height: 48px; margin-bottom: 12px; }
 .stopped h2 { font-size: 18px; }

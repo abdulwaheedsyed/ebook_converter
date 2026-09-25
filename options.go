@@ -29,6 +29,7 @@ type Options struct {
 	Direction string
 	Orient    string // "" means detect
 	Mixed     bool
+	TOC       string // tocBookmarks or tocPages
 	Validate  bool
 	Epubcheck bool
 	Jobs      int
@@ -44,6 +45,7 @@ func defaultOptions() Options {
 		Quality:   92,
 		Lang:      "en",
 		Direction: "ltr",
+		TOC:       tocBookmarks,
 		Validate:  true,
 		Epubcheck: true,
 		Jobs:      min(runtime.NumCPU(), 6),
@@ -86,6 +88,8 @@ Options:
   --rtl              Right-to-left reading order     (default is LTR; --ltr)
   --orientation X    Force portrait, landscape, auto or none
   --mixed            Keep per-page canvases instead of one shared canvas
+  --toc X            Contents from the PDF's bookmarks, or one entry per
+                     page: bookmarks or pages        (default bookmarks)
   --jobs N           Pages rendered in parallel      (default: CPUs, max 6)
   --no-validate      Skip all validation
   --no-epubcheck     Skip the external epubcheck even when it is installed
@@ -158,6 +162,13 @@ func parseArgs(args []string) (Options, error) {
 				return fmt.Errorf("--lang %q is not a well-formed BCP 47 language tag (for example ur, ar, en, ur-Latn)", v)
 			}
 			o.Lang = v
+			return nil
+		}},
+		"toc": {true, func(v string) error {
+			if v != tocBookmarks && v != tocPages {
+				return fmt.Errorf("--toc must be bookmarks or pages, got %q", v)
+			}
+			o.TOC = v
 			return nil
 		}},
 		"orientation": {true, func(v string) error {

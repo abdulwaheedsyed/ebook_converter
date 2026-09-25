@@ -17,6 +17,9 @@ func TestParseArgsOptionsAnywhere(t *testing.T) {
 	if !o.Grayscale || o.DPI != 150 || o.Lang != "ar" || o.Direction != "rtl" || !o.Verbose {
 		t.Errorf("options not applied: %+v", o)
 	}
+	if o, _ := parseArgs([]string{"a.pdf", "--toc=pages", "b.epub"}); o.TOC != tocPages {
+		t.Errorf("options not applied: %+v", o)
+	}
 	if o.Title != "in" {
 		t.Errorf("default title = %q, want the file name without extension", o.Title)
 	}
@@ -40,7 +43,7 @@ func TestParseArgsDefaults(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if o.DPI != dpiAuto || o.MaxEdge != 2560 || o.Quality != 92 || o.Direction != "ltr" || o.Lang != "en" || !o.Validate || !o.Epubcheck {
+	if o.DPI != dpiAuto || o.MaxEdge != 2560 || o.Quality != 92 || o.Direction != "ltr" || o.Lang != "en" || o.TOC != tocBookmarks || !o.Validate || !o.Epubcheck {
 		t.Errorf("unexpected defaults: %+v", o)
 	}
 }
@@ -52,6 +55,7 @@ func TestParseArgsErrors(t *testing.T) {
 		"not a number":        {"--dpi", "high", "a.pdf", "b.epub"},
 		"out of range":        {"--quality", "101", "a.pdf", "b.epub"},
 		"bad orientation":     {"--orientation", "sideways", "a.pdf", "b.epub"},
+		"bad contents":        {"--toc", "chapters", "a.pdf", "b.epub"},
 		"bad language":        {"--lang", "this is not a language", "a.pdf", "b.epub"},
 		"value on bool":       {"--grayscale=yes", "a.pdf", "b.epub"},
 		"too few arguments":   {"a.pdf"},

@@ -21,6 +21,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"unicode/utf16"
 
 	"golang.org/x/image/font"
 	"golang.org/x/image/font/gofont/goitalic"
@@ -50,9 +51,11 @@ func main() {
 // ----- a minimal PDF writer -----
 
 type pdf struct {
-	objs  []string // object bodies, numbered from 1
-	pages []int
-	fonts int // object number of the font resource dictionary
+	objs   []string // object bodies, numbered from 1
+	pages  []int
+	marks  []bookmark // the outline, one level deep
+	labels string     // a /PageLabels number tree's /Nums, or ""
+	fonts  int        // object number of the font resource dictionary
 }
 
 func newPDF() *pdf {
@@ -106,7 +109,27 @@ func (p *pdf) bytes() []byte {
 	for i, n := range p.pages {
 		kids[i] = fmt.Sprintf("%d 0 R", n)
 	}
-	p.objs[0] = "<< /Type /Catalog /Pages 2 0 R >>"
+	catalog := ""
+	if len(p.marks) > 0 {
+		root := p.add("")
+		first := len(p.objs) + 1
+		for i, m := range p.marks {
+			d := fmt.Sprintf("<< /Title %s /Parent %d 0 R /Dest [%d 0 R /Fit]", utf16Text(m.title), root, p.pages[m.page])
+			if i > 0 {
+				d += fmt.Sprintf(" /Prev %d 0 R", first+i-1)
+			}
+			if i < len(p.marks)-1 {
+				d += fmt.Sprintf(" /Next %d 0 R", first+i+1)
+			}
+			p.add(d + " >>")
+		}
+		p.objs[root-1] = fmt.Sprintf("<< /Type /Outlines /First %d 0 R /Last %d 0 R /Count %d >>", first, first+len(p.marks)-1, len(p.marks))
+		catalog += fmt.Sprintf(" /Outlines %d 0 R /PageMode /UseOutlines", root)
+	}
+	if p.labels != "" {
+		catalog += " /PageLabels << /Nums [" + p.labels + "] >>"
+	}
+	p.objs[0] = "<< /Type /Catalog /Pages 2 0 R" + catalog + " >>"
 	p.objs[1] = fmt.Sprintf("<< /Type /Pages /Kids [%s] /Count %d >>", strings.Join(kids, " "), len(p.pages))
 
 	var b bytes.Buffer
@@ -123,6 +146,22 @@ func (p *pdf) bytes() []byte {
 	}
 	fmt.Fprintf(&b, "trailer\n<< /Size %d /Root 1 0 R >>\nstartxref\n%d\n%%%%EOF\n", len(p.objs)+1, xref)
 	return b.Bytes()
+}
+
+// bookmark is an outline entry that opens a page.
+type bookmark struct {
+	title string
+	page  int
+}
+
+// utf16Text is a PDF text string in UTF-16BE, which holds any character.
+func utf16Text(s string) string {
+	var b strings.Builder
+	b.WriteString("<FEFF")
+	for _, u := range utf16.Encode([]rune(s)) {
+		fmt.Fprintf(&b, "%04X", u)
+	}
+	return b.String() + ">"
 }
 
 // draw builds a page's content stream.
@@ -263,6 +302,13 @@ var alice = []string{
 	"Either the well was very deep, or she fell very slowly, for she had plenty of time as she went down to look about her and to wonder what was going to happen next. First, she tried to look down and make out what she was coming to, but it was too dark to see anything; then she looked at the sides of the well, and noticed that they were filled with cupboards and book-shelves; here and there she saw maps and pictures hung upon pegs.",
 }
 
+var chapters = [][2]string{
+	{"I", "Down the Rabbit-Hole"}, {"II", "The Pool of Tears"}, {"III", "A Caucus-Race and a Long Tale"},
+	{"IV", "The Rabbit Sends in a Little Bill"}, {"V", "Advice from a Caterpillar"}, {"VI", "Pig and Pepper"},
+	{"VII", "A Mad Tea-Party"}, {"VIII", "The Queen’s Croquet-Ground"}, {"IX", "The Mock Turtle’s Story"},
+	{"X", "The Lobster Quadrille"}, {"XI", "Who Stole the Tarts?"}, {"XII", "Alice’s Evidence"},
+}
+
 func novel() *pdf {
 	const W, H = 396, 612
 	const green, cream, ink = 0x14532D, 0xFEF3C7, 0x1C1917
@@ -279,15 +325,20 @@ func novel() *pdf {
 	d.text(4, 18, 62, 262, cream, "Lewis Carroll")
 	p.page(W, H, d.String(), nil)
 
-	// Enough pages that a screenshot can catch the conversion in progress.
+	// Enough pages that a screenshot can catch the conversion in progress,
+	// with the book's twelve chapters spread over them and bookmarked.
+	p.marks = append(p.marks, bookmark{"Cover", 0})
+	p.labels = "0 << /P (Cover) >> 1 << /S /D >>"
 	for n := 1; n <= 300; n++ {
 		d := &draw{}
 		d.rect(0, 0, W, H, 0xFFFFFF)
 		y := float64(H - 72)
-		if n == 1 {
-			d.text(5, 18, 54, y, ink, "Chapter I")
-			d.text(4, 14, 54, y-24, ink, "Down the Rabbit-Hole")
+		if (n-1)%25 == 0 {
+			ch := chapters[(n-1)/25]
+			d.text(5, 18, 54, y, ink, "Chapter "+ch[0])
+			d.text(4, 14, 54, y-24, ink, ch[1])
 			y -= 64
+			p.marks = append(p.marks, bookmark{"Chapter " + ch[0] + ". " + ch[1], n})
 		}
 		for _, para := range alice {
 			for i, line := range wrap(para, 11, W-108, 0.40) {

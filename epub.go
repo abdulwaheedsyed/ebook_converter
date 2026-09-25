@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"hash/crc32"
 	"io"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -24,6 +25,8 @@ type Book struct {
 	Canvas    Size // normalised canvas; per-page sizes are used in mixed mode
 	Mixed     bool
 	Pages     []Page
+	TOC       []TOCEntry // from the PDF's outline; nil lists every page
+	Labels    []string   // page labels for the page list; nil numbers them
 	Modified  time.Time
 	ID        string // urn:uuid:...
 }
@@ -255,8 +258,37 @@ func navXHTML(b *Book) []byte {
 <h1>%[3]s</h1>
 <ol>
 `, esc(b.Lang), b.Direction, esc(b.Title))
+	href := func(i int) string { return "text/" + pageName(i, len(b.Pages)) + ".xhtml" }
+	if len(b.TOC) > 0 {
+		var list func(entries []TOCEntry)
+		list = func(entries []TOCEntry) {
+			for _, e := range entries {
+				fmt.Fprintf(&buf, "<li><a href=\"%s\">%s</a>", href(e.Page), esc(e.Title))
+				if len(e.Children) > 0 {
+					buf.WriteString("\n<ol>\n")
+					list(e.Children)
+					buf.WriteString("</ol>\n")
+				}
+				buf.WriteString("</li>\n")
+			}
+		}
+		list(b.TOC)
+	} else {
+		for i := range b.Pages {
+			fmt.Fprintf(&buf, "<li><a href=\"%s\">%d</a></li>\n", href(i), i+1)
+		}
+	}
+	buf.WriteString("</ol>\n</nav>\n")
+
+	// The page list lets a reader go to a page by its number, printed
+	// labels included.
+	buf.WriteString("<nav epub:type=\"page-list\" id=\"page-list\" hidden=\"hidden\">\n<ol>\n")
 	for i := range b.Pages {
-		fmt.Fprintf(&buf, "<li><a href=\"text/%s.xhtml\">%d</a></li>\n", pageName(i, len(b.Pages)), i+1)
+		label := strconv.Itoa(i + 1)
+		if b.Labels != nil {
+			label = b.Labels[i]
+		}
+		fmt.Fprintf(&buf, "<li><a href=\"%s\">%s</a></li>\n", href(i), esc(label))
 	}
 	buf.WriteString("</ol>\n</nav>\n</body>\n</html>\n")
 	return buf.Bytes()

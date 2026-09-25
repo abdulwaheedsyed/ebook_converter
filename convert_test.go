@@ -20,13 +20,18 @@ func convertPDF(t *testing.T, pages []testPage, extra ...string) (Options, []byt
 
 func convertPDFAt(t *testing.T, pages []testPage, dpi string, extra ...string) (Options, []byte) {
 	t.Helper()
+	return convertBytes(t, makePDF(pages), dpi, extra...)
+}
+
+func convertBytes(t *testing.T, pdf []byte, dpi string, extra ...string) (Options, []byte) {
+	t.Helper()
 	if testing.Short() {
 		t.Skip("starts the PDF engine; skipped with -short")
 	}
 	dir := t.TempDir()
 	in := filepath.Join(dir, "in.pdf")
 	out := filepath.Join(dir, "out.epub")
-	if err := os.WriteFile(in, makePDF(pages), 0o644); err != nil {
+	if err := os.WriteFile(in, pdf, 0o644); err != nil {
 		t.Fatal(err)
 	}
 	// Low DPI keeps the test fast; --no-epubcheck keeps it independent of

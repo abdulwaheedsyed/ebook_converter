@@ -48,7 +48,7 @@ const els = {
   lang: $("#lang"), langOther: $("#lang-other"), langOtherRow: $("#lang-other-row"),
   flatten: $("#flatten"), orientation: $("#orientation"), dpi: $("#dpi"),
   quality: $("#quality"), qualityOut: $("#quality-out"), maxEdge: $("#maxEdge"),
-  mixed: $("#mixed"), validate: $("#validate"),
+  mixed: $("#mixed"), validate: $("#validate"), toc: $("#toc"),
 };
 let dirTouched = false;
 
@@ -68,6 +68,7 @@ function readSettings() {
     maxEdge: +els.maxEdge.value,
     orientation: els.orientation.value,
     mixed: els.mixed.checked,
+    toc: els.toc.value,
     validate: els.validate.checked,
   };
 }
@@ -85,6 +86,7 @@ function applySettings(s) {
   els.quality.value = s.quality; els.qualityOut.value = s.quality;
   els.maxEdge.value = [...els.maxEdge.options].some((o) => +o.value === s.maxEdge) ? String(s.maxEdge) : "2560";
   els.mixed.checked = s.mixed;
+  els.toc.value = s.toc === "pages" ? "pages" : "bookmarks";
   els.validate.checked = s.validate;
 }
 
@@ -181,6 +183,8 @@ function card(job) {
     try { await api(`/api/jobs/${job.id}`, { method: "DELETE" }); } catch (err) { toast(err.message); }
   });
   $(".again", li).addEventListener("click", () => convert([job.id]));
+  $(".preview-btn", li).addEventListener("click", () => openPreview(job.id));
+  $(".cover", li).addEventListener("click", () => { if (state.jobs.get(job.id).state === "done") openPreview(job.id); });
   cards.set(job.id, li);
   return li;
 }
@@ -245,6 +249,7 @@ function renderJob(job) {
       r.canvas.replace(" × ", " × "),
       r.orientation,
       `${r.dpi} DPI${r.scan ? " (native)" : ""}`,
+      ...(r.toc ? [plural(r.toc, "contents entry", "contents entries")] : []),
       `${r.seconds < 10 ? r.seconds.toFixed(1) : Math.round(r.seconds)} s`,
     ];
     let v = "";
@@ -267,6 +272,10 @@ function renderJob(job) {
   const err = $(".error", li);
   err.hidden = !job.error;
   err.textContent = job.error || "";
+
+  li.classList.toggle("previewable", job.state === "done");
+  $(".preview-btn", li).hidden = job.state !== "done";
+  if (pv.id === job.id && (job.state !== "done" || (job.result && job.result.built !== pv.built))) closePreview();
 
   const dl = $(".download", li);
   dl.hidden = job.state !== "done";
@@ -317,6 +326,182 @@ function renderInfo() {
     : "Checks the finished EPUB. Install epubcheck for a second opinion.";
 }
 
+// ---------- page preview ----------
+
+// Kindle screens in pixels, held upright. A fixed-layout page is scaled to
+// fit the screen, as the Kindle does, so the preview shows how much of the
+// screen each page will fill.
+const devices = [
+  { id: "kindle", name: "Kindle (6″)", w: 1072, h: 1448 },
+  { id: "paperwhite", name: "Kindle Paperwhite (7″)", w: 1264, h: 1680 },
+  { id: "paperwhite-6.8", name: "Kindle Paperwhite (6.8″)", w: 1236, h: 1648 },
+  { id: "colorsoft", name: "Kindle Colorsoft (7″)", w: 1264, h: 1680, colour: true },
+  { id: "scribe", name: "Kindle Scribe (10.2″)", w: 1860, h: 2480 },
+];
+const pv = { id: null, built: 0, book: null, page: 0, lastPage: new Map() };
+const pvEl = {
+  dialog: $("#preview"), title: $("#pv-title"), sub: $("#pv-sub"), device: $("#pv-device"),
+  rotate: $("#pv-rotate"), tocBtn: $("#pv-toc-btn"), toc: $("#pv-toc"), stage: $("#pv-stage"),
+  frame: $("#pv-frame"), screen: $("#pv-screen"), img: $("#pv-img"), loading: $(".pv-loading"),
+  left: $("#pv-left"), right: $("#pv-right"), slider: $("#pv-slider"), pos: $("#pv-pos"), fit: $("#pv-fit"),
+};
+pvEl.device.replaceChildren(...devices.map((d) => new Option(d.name, d.id)));
+pvEl.device.value = devices.some((d) => d.id === store.get("pvDevice")) ? store.get("pvDevice") : "paperwhite";
+let pvSideways = store.get("pvSideways", false);
+let pvTocOpen = store.get("pvToc", true);
+
+const pageURL = (i) => withToken(`/api/jobs/${pv.id}/pages/${i}`) + "&v=" + pv.built;
+
+async function openPreview(id) {
+  const job = state.jobs.get(id);
+  if (!job || job.state !== "done") return;
+  let book;
+  try { book = await (await api(`/api/jobs/${id}/preview`)).json(); } catch (err) { toast(err.message); return; }
+  Object.assign(pv, { id, built: job.result.built, book });
+  pv.page = Math.min(pv.lastPage.get(id + ":" + pv.built) || 0, book.pages.length - 1);
+  const rtl = book.direction === "rtl";
+
+  pvEl.title.textContent = book.title || job.title;
+  pvEl.sub.textContent = `${plural(book.pages.length, "page")} · ${rtl ? "right to left" : "left to right"}`;
+  pvEl.slider.max = book.pages.length;
+  pvEl.slider.dir = rtl ? "rtl" : "ltr";
+  pvEl.left.setAttribute("aria-label", rtl ? "Next page" : "Previous page");
+  pvEl.right.setAttribute("aria-label", rtl ? "Previous page" : "Next page");
+
+  // The contents are worth a panel only when they came from bookmarks.
+  const hasToc = !!(job.result.toc && book.toc && book.toc.length);
+  pvEl.tocBtn.hidden = !hasToc;
+  pvEl.toc.hidden = !(hasToc && pvTocOpen);
+  pvEl.tocBtn.setAttribute("aria-pressed", String(hasToc && pvTocOpen));
+  const list = (entries) => {
+    const ol = document.createElement("ol");
+    for (const e of entries) {
+      const li = document.createElement("li");
+      const b = document.createElement("button");
+      b.type = "button"; b.dataset.page = e.page;
+      b.innerHTML = "<span></span><small></small>";
+      b.firstChild.textContent = e.title;
+      b.lastChild.textContent = book.pages[e.page].label;
+      b.addEventListener("click", () => showPage(e.page));
+      li.append(b);
+      if (e.children && e.children.length) li.append(list(e.children));
+      ol.append(li);
+    }
+    return ol;
+  };
+  pvEl.toc.replaceChildren(hasToc ? list(book.toc) : document.createElement("ol"));
+
+  if (!pvEl.dialog.open) pvEl.dialog.showModal();
+  // Keys turn pages from the start, without a focus ring on the first button.
+  pvEl.stage.focus();
+  layoutPreview();
+  showPage(pv.page);
+}
+
+function closePreview() {
+  if (pvEl.dialog.open) pvEl.dialog.close();
+}
+pvEl.dialog.addEventListener("close", () => {
+  if (pv.id) pv.lastPage.set(pv.id + ":" + pv.built, pv.page);
+  pv.id = null; pv.book = null;
+  pvEl.img.removeAttribute("src");
+});
+
+function device() {
+  const d = devices.find((x) => x.id === pvEl.device.value) || devices[0];
+  return pvSideways ? { ...d, w: d.h, h: d.w } : d;
+}
+
+// Size the Kindle to the space available, keeping its screen's proportions.
+function layoutPreview() {
+  if (!pv.book) return;
+  const d = device();
+  pvEl.rotate.setAttribute("aria-pressed", String(pvSideways));
+  pvEl.screen.classList.toggle("colour", !!d.colour);
+  // Leave room for the page-turn buttons, the gaps beside them and a margin.
+  const beside = 2 * (pvEl.left.offsetWidth + 16) + 32;
+  const availW = pvEl.stage.clientWidth - beside, availH = pvEl.stage.clientHeight - 32;
+  const bezel = 0.055; // of the screen's shorter side, on every edge
+  const short = Math.min(d.w, d.h);
+  const scale = Math.max(0.05, Math.min(availW / (d.w + 2 * bezel * short), availH / (d.h + 2 * bezel * short)));
+  pvEl.screen.style.width = Math.round(d.w * scale) + "px";
+  pvEl.screen.style.height = Math.round(d.h * scale) + "px";
+  pvEl.frame.style.padding = Math.round(bezel * short * scale) + "px";
+  describeFit();
+}
+
+function describeFit() {
+  const p = pv.book.pages[pv.page], d = device();
+  if (!p.w || !p.h) { pvEl.fit.textContent = ""; return; }
+  const k = Math.min(d.w / p.w, d.h / p.h);
+  const fill = Math.round(100 * (p.w * k) * (p.h * k) / (d.w * d.h));
+  let text = ` · fills ${fill}% of the screen`;
+  const pageWide = p.w > p.h, screenWide = d.w > d.h;
+  if (fill < 70 && pageWide !== screenWide) text += pageWide ? " — turn the Kindle sideways to read it larger" : " — hold the Kindle upright to read it larger";
+  pvEl.fit.textContent = text;
+}
+
+function showPage(i) {
+  const n = pv.book.pages.length;
+  pv.page = Math.max(0, Math.min(n - 1, i));
+  const p = pv.book.pages[pv.page];
+  pvEl.loading.hidden = false;
+  pvEl.img.onload = pvEl.img.onerror = () => { pvEl.loading.hidden = true; };
+  pvEl.img.src = pageURL(pv.page);
+  pvEl.img.alt = `Page ${p.label}`;
+  pvEl.slider.value = pv.page + 1;
+  const ordinal = `${pv.page + 1} of ${n}`;
+  pvEl.pos.textContent = p.label === String(pv.page + 1) ? `Page ${ordinal}` : `Page ${p.label} · ${ordinal}`;
+  describeFit();
+
+  const rtl = pv.book.direction === "rtl";
+  const atStart = pv.page === 0, atEnd = pv.page === n - 1;
+  pvEl.left.disabled = rtl ? atEnd : atStart;
+  pvEl.right.disabled = rtl ? atStart : atEnd;
+
+  // Mark the section being read, and keep it in view.
+  let current = null;
+  for (const b of pvEl.toc.querySelectorAll("button")) {
+    b.classList.remove("current");
+    if (+b.dataset.page <= pv.page) current = b;
+  }
+  if (current) { current.classList.add("current"); current.scrollIntoView({ block: "nearest" }); }
+
+  // Fetch the neighbours ahead of time, so turning a page is instant.
+  for (const j of [pv.page + 1, pv.page - 1, pv.page + 2]) if (j >= 0 && j < n) new Image().src = pageURL(j);
+}
+
+// Turning towards the left goes back in a left-to-right book and forward in
+// a right-to-left one, as on the Kindle.
+function turn(side) {
+  const forward = (side === "right") !== (pv.book.direction === "rtl");
+  showPage(pv.page + (forward ? 1 : -1));
+}
+pvEl.left.addEventListener("click", () => turn("left"));
+pvEl.right.addEventListener("click", () => turn("right"));
+pvEl.screen.addEventListener("click", (e) => {
+  const r = pvEl.screen.getBoundingClientRect();
+  turn(e.clientX - r.left < r.width / 2 ? "left" : "right");
+});
+pvEl.slider.addEventListener("input", () => showPage(+pvEl.slider.value - 1));
+pvEl.dialog.addEventListener("keydown", (e) => {
+  if (!pv.book || e.target === pvEl.device || e.target === pvEl.slider) return;
+  const keys = { ArrowLeft: () => turn("left"), ArrowRight: () => turn("right"), PageDown: () => showPage(pv.page + 1),
+    PageUp: () => showPage(pv.page - 1), " ": () => showPage(pv.page + 1), Home: () => showPage(0), End: () => showPage(pv.book.pages.length - 1) };
+  if (keys[e.key]) { e.preventDefault(); keys[e.key](); }
+});
+pvEl.device.addEventListener("change", () => { store.set("pvDevice", pvEl.device.value); layoutPreview(); });
+pvEl.rotate.addEventListener("click", () => { pvSideways = !pvSideways; store.set("pvSideways", pvSideways); layoutPreview(); });
+pvEl.tocBtn.addEventListener("click", () => {
+  pvTocOpen = pvEl.toc.hidden;
+  store.set("pvToc", pvTocOpen);
+  pvEl.toc.hidden = !pvTocOpen;
+  pvEl.tocBtn.setAttribute("aria-pressed", String(pvTocOpen));
+  layoutPreview();
+});
+$("#pv-close").addEventListener("click", closePreview);
+window.addEventListener("resize", () => { if (pvEl.dialog.open) layoutPreview(); });
+
 // ---------- server events ----------
 
 let stoppedTimer;
@@ -349,6 +534,7 @@ function connect() {
   });
   es.addEventListener("removed", (e) => {
     const { id } = JSON.parse(e.data);
+    if (pv.id === id) closePreview();
     state.jobs.delete(id);
     state.order = state.order.filter((x) => x !== id);
     renderList();

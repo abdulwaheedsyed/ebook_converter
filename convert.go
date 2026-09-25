@@ -60,6 +60,7 @@ type Result struct {
 	Flattened int
 	Elapsed   time.Duration
 	Cover     []byte // small JPEG of the first page, for previews
+	TOC       int    // entries taken from the PDF's outline; 0 lists every page
 
 	Validated bool      // built-in validation ran
 	Problems  []Problem // built-in findings
@@ -118,6 +119,14 @@ func convertBook(ctx context.Context, eng *engine, o Options, report func(Event)
 		// long book, so it reports progress too.
 		report(Event{Stage: stageMeasuring, Done: i + 1, Total: n})
 	}
+	// A damaged outline is not worth failing the book over; it falls back
+	// to one entry per page.
+	var toc []TOCEntry
+	if o.TOC == tocBookmarks {
+		toc, _ = first.outline(n)
+	}
+	labels := first.pageLabels(n)
+
 	plan.Canvas = chooseCanvas(sizes, o.MaxEdge)
 	plan.Orient = bookOrientation(plan.Canvas, o.Orient, o.Mixed)
 	report(Event{Stage: stageRendering, Total: n, Plan: &plan})
@@ -138,6 +147,8 @@ func convertBook(ctx context.Context, eng *engine, o Options, report func(Event)
 		Canvas:    plan.Canvas,
 		Mixed:     o.Mixed,
 		Pages:     pages,
+		TOC:       toc,
+		Labels:    labels,
 		Modified:  time.Now(),
 		ID:        newUUID(),
 	}
@@ -151,6 +162,7 @@ func convertBook(ctx context.Context, eng *engine, o Options, report func(Event)
 		Bytes:     len(data),
 		Flattened: flattened,
 		Cover:     pages[0].Thumb,
+		TOC:       countEntries(toc),
 		Passed:    true,
 	}
 	for _, p := range pages {

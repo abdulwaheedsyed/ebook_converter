@@ -166,6 +166,11 @@ func convert(ctx context.Context, o Options, out io.Writer) (bool, error) {
 			say("Page %0*d   : %dx%d %s -> %dx%d\n", w, i+1, p.Source.W, p.Source.H, p.Orient, p.Size.W, p.Size.H)
 		}
 	}
+	if res.TOC > 0 {
+		say("Contents    : %d %s from the PDF's bookmarks\n", res.TOC, map[bool]string{true: "entry", false: "entries"}[res.TOC == 1])
+	} else {
+		say("Contents    : one entry per page\n")
+	}
 	say("\nOutput      : %s\n", o.Output)
 	say("Size        : %s\n", humanBytes(res.Bytes))
 	if o.FlattenBG {

@@ -61,6 +61,7 @@ type jobSettings struct {
 	MaxEdge     int    `json:"maxEdge"`
 	Orientation string `json:"orientation"` // "" = automatic
 	Mixed       bool   `json:"mixed"`
+	TOC         string `json:"toc"` // "" = bookmarks
 	Validate    bool   `json:"validate"`
 }
 
@@ -68,7 +69,7 @@ func defaultSettings() jobSettings {
 	d := defaultOptions()
 	return jobSettings{
 		Lang: d.Lang, Direction: d.Direction, Grayscale: true, DPI: d.DPI,
-		Quality: d.Quality, MaxEdge: d.MaxEdge, Validate: true,
+		Quality: d.Quality, MaxEdge: d.MaxEdge, TOC: d.TOC, Validate: true,
 	}
 }
 
@@ -93,12 +94,19 @@ func (s jobSettings) options(title, in, out string, jobs int) (Options, error) {
 	default:
 		return o, errors.New("orientation must be automatic, portrait or landscape")
 	}
+	switch s.TOC {
+	case "":
+		s.TOC = tocBookmarks
+	case tocBookmarks, tocPages:
+	default:
+		return o, errors.New("contents must be bookmarks or pages")
+	}
 	if strings.TrimSpace(title) == "" {
 		return o, errors.New("the title is empty")
 	}
 	o.Lang, o.Direction, o.Grayscale, o.FlattenBG = s.Lang, s.Direction, s.Grayscale, s.FlattenBG
 	o.DPI, o.Quality, o.MaxEdge, o.Orient, o.Mixed = s.DPI, s.Quality, s.MaxEdge, s.Orientation, s.Mixed
-	o.Validate, o.Epubcheck = s.Validate, s.Validate
+	o.TOC, o.Validate, o.Epubcheck = s.TOC, s.Validate, s.Validate
 	return o, nil
 }
 
@@ -147,12 +155,14 @@ type resultView struct {
 	Bytes       int         `json:"bytes"`
 	Seconds     float64     `json:"seconds"`
 	Flattened   int         `json:"flattened"`
+	TOC         int         `json:"toc"` // entries from the PDF's bookmarks
 	Validated   bool        `json:"validated"`
 	Passed      bool        `json:"passed"`
 	Codes       []codeCount `json:"codes,omitempty"`
 	Problems    []string    `json:"problems,omitempty"`
 	Epubcheck   string      `json:"epubcheck"` // passed, failed, missing, skipped
 	EpubSummary string      `json:"epubcheckSummary,omitempty"`
+	Built       int64       `json:"built"` // distinguishes one conversion's pages from the next
 }
 
 type job struct {
@@ -160,6 +170,7 @@ type job struct {
 	pdf     string
 	epub    string
 	cover   []byte
+	book    *previewBook // read back from the EPUB on first preview
 	cancel  context.CancelFunc
 	lastPub time.Time
 }
@@ -340,6 +351,8 @@ func (s *guiServer) handler() http.Handler {
 	api.HandleFunc("DELETE /api/jobs/{id}", s.remove)
 	api.HandleFunc("GET /api/jobs/{id}/epub", s.download)
 	api.HandleFunc("GET /api/jobs/{id}/cover", s.coverImage)
+	api.HandleFunc("GET /api/jobs/{id}/preview", s.preview)
+	api.HandleFunc("GET /api/jobs/{id}/pages/{n}", s.pageImage)
 	api.HandleFunc("GET /api/download-all", s.downloadAll)
 	api.HandleFunc("GET /api/licenses", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
@@ -775,6 +788,7 @@ func (s *guiServer) runJob(id string) {
 	o, err := j.view.Settings.options(j.view.Title, j.pdf, j.epub, s.jobs)
 	ctx, cancel := context.WithCancel(s.ctx)
 	j.cancel = cancel
+	j.book = nil
 	j.view.State = stateConverting
 	s.publish(j, true)
 	s.mu.Unlock()
@@ -819,8 +833,9 @@ func (s *guiServer) runJob(id string) {
 func newResultView(r *Result, o Options) *resultView {
 	v := &resultView{
 		Pages: r.Pages, Orientation: r.Orient.Book, DPI: r.DPI, Scan: r.Scan,
-		Bytes: r.Bytes, Seconds: r.Elapsed.Seconds(), Flattened: r.Flattened,
+		Bytes: r.Bytes, Seconds: r.Elapsed.Seconds(), Flattened: r.Flattened, TOC: r.TOC,
 		Validated: r.Validated, Passed: r.Passed, Epubcheck: "skipped",
+		Built: time.Now().UnixNano(),
 	}
 	v.Canvas = fmt.Sprintf("%d × %d", r.Canvas.W, r.Canvas.H)
 	if o.Mixed {
@@ -907,6 +922,76 @@ func (s *guiServer) coverImage(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "image/jpeg")
 	w.Header().Set("Content-Length", strconv.Itoa(len(c)))
 	w.Write(c)
+}
+
+// ----- preview ---------------------------------------------------------------
+
+// previewOf reads a finished job's EPUB back, once, for the preview.
+func (s *guiServer) previewOf(id string) (*job, *previewBook, error) {
+	j, ok := s.finished(id)
+	if !ok {
+		return nil, nil, errNotFinished
+	}
+	s.mu.Lock()
+	b := j.book
+	s.mu.Unlock()
+	if b != nil {
+		return j, b, nil
+	}
+	zr, err := zip.OpenReader(j.epub)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer zr.Close()
+	if b, err = readPreview(&zr.Reader); err != nil {
+		return nil, nil, err
+	}
+	s.mu.Lock()
+	if j.view.State == stateDone {
+		j.book = b
+	}
+	s.mu.Unlock()
+	return j, b, nil
+}
+
+var errNotFinished = errors.New("the book is not finished")
+
+func (s *guiServer) preview(w http.ResponseWriter, r *http.Request) {
+	_, b, err := s.previewOf(r.PathValue("id"))
+	switch {
+	case errors.Is(err, errNotFinished):
+		http.NotFound(w, r)
+	case err != nil:
+		http.Error(w, "the EPUB cannot be previewed: "+err.Error(), http.StatusUnprocessableEntity)
+	default:
+		writeJSON(w, http.StatusOK, b)
+	}
+}
+
+func (s *guiServer) pageImage(w http.ResponseWriter, r *http.Request) {
+	j, b, err := s.previewOf(r.PathValue("id"))
+	n, nerr := strconv.Atoi(r.PathValue("n"))
+	if err != nil || nerr != nil || n < 0 || n >= len(b.Pages) {
+		http.NotFound(w, r)
+		return
+	}
+	zr, err := zip.OpenReader(j.epub)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	defer zr.Close()
+	data, typ, err := previewImage(&zr.Reader, b, n)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	// The page asks for each conversion's pages under a new URL, so they
+	// can be cached.
+	w.Header().Set("Content-Type", typ)
+	w.Header().Set("Cache-Control", "private, max-age=3600")
+	w.Header().Set("Content-Length", strconv.Itoa(len(data)))
+	w.Write(data)
 }
 
 // downloadAll streams every finished EPUB in one ZIP, stored rather than

@@ -45,11 +45,10 @@ complete workflow still reaches outside the binary.
   [purego](https://github.com/ebitengine/purego)): straightforward on
   Windows and macOS, where the web view is part of the system; on Linux,
   WebKitGTK is not always installed, so keep the browser as a fallback.
-- [ ] **A page preview, to lessen the need for Kindle Previewer.** Amazon's
+- [x] **A page preview, to lessen the need for Kindle Previewer.** Amazon's
   Kindle Previewer is proprietary and cannot be built in, but its main use
-  here — checking that pages look right before sending a book to a Kindle —
-  can be: a flip-through of the finished EPUB in the GUI, at a Kindle-sized
-  viewport, would catch most problems without it.
+  here can be: checking that pages look right before sending a book to a
+  Kindle. The GUI flips through the finished EPUB on a Kindle-sized screen.
 - [ ] **PDF inspection is built in; keep it that way.** Deciding a scan's
   resolution used to mean running poppler's `pdfimages` and `pdftotext` by
   hand. `--dpi auto` now does it. Any future diagnostics should follow suit.
@@ -68,4 +67,5 @@ complete workflow still reaches outside the binary.
 
 - [ ] `--password` for encrypted PDFs.
 - [ ] Converting a page range.
-- [ ] A table of contents from the PDF's outline, where it has one.
+- [x] A table of contents from the PDF's outline, where it has one, and a
+  page list from its page labels.
