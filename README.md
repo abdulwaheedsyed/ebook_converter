@@ -28,7 +28,24 @@ ImageMagick, no zip tool, no Java.
 
 ## Install
 
-With Go 1.27 or later:
+Download the archive for your platform from the
+[releases page](https://github.com/abdulwaheedsyed/ebook_converter/releases),
+check it against `SHA256SUMS`, and put the `ebook_converter` binary somewhere
+on your `PATH`:
+
+```bash
+sha256sum --ignore-missing -c SHA256SUMS      # macOS: shasum -a 256 -c SHA256SUMS
+tar -xzf ebook_converter-*-linux-amd64.tar.gz
+```
+
+On macOS, a binary downloaded through a browser is quarantined by Gatekeeper
+because it is not notarised. Clear the flag once after extracting:
+
+```bash
+xattr -d com.apple.quarantine ebook_converter
+```
+
+Or install from source with Go 1.27 or later:
 
 ```bash
 go install github.com/abdulwaheedsyed/ebook_converter@latest
@@ -39,6 +56,7 @@ Or build from a clone:
 ```bash
 make build        # ./ebook_converter for this machine
 make dist         # every supported platform, into dist/
+make package      # release archives and SHA256SUMS, into dist/
 ```
 
 No C compiler is needed for any target: the build is pure Go with
@@ -240,6 +258,10 @@ make test         # all tests, including end-to-end conversions (about 20 s)
 make test-short   # unit tests only; skips anything that starts the PDF engine
 make notices      # regenerate THIRD_PARTY_NOTICES.md after changing dependencies
 ```
+
+CI runs the full test suite on every released platform for each push to
+`main` and each pull request. Pushing a tag such as `v1.2.3` builds, tests
+and publishes a release with the archives attached.
 
 The tests fail if a linked module is missing from `THIRD_PARTY_NOTICES.md` or
 listed at the wrong version, so the notices cannot silently go stale.
