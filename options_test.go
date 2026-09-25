@@ -125,3 +125,19 @@ func TestValidLang(t *testing.T) {
 		}
 	}
 }
+
+func TestResolveVersion(t *testing.T) {
+	cases := []struct{ linked, module, want string }{
+		{"v1.2.3", "v1.2.3", "v1.2.3"},  // release build
+		{"v1.2.3", "(devel)", "v1.2.3"}, // release build from a checkout
+		{"dev", "v1.2.3", "v1.2.3"},     // go install module@v1.2.3
+		{"dev", "(devel)", "dev"},       // go build without version control
+		{"dev", "", "dev"},
+		{"", "v0.9.0", "v0.9.0"},
+	}
+	for _, c := range cases {
+		if got := resolveVersion(c.linked, c.module); got != c.want {
+			t.Errorf("resolveVersion(%q, %q) = %q, want %q", c.linked, c.module, got, c.want)
+		}
+	}
+}

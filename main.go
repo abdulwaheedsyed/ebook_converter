@@ -15,14 +15,35 @@ import (
 	"os"
 	"os/signal"
 	"regexp"
+	"runtime/debug"
 	"sort"
 	"strings"
 	"syscall"
 	"time"
 )
 
-// version is set at build time with -ldflags "-X main.version=...".
+// version is set at build time with -ldflags "-X main.version=...", as the
+// release builds do. A binary built by "go install" carries its module
+// version in its build information instead, and init picks that up.
 var version = "dev"
+
+func init() {
+	if bi, ok := debug.ReadBuildInfo(); ok {
+		version = resolveVersion(version, bi.Main.Version)
+	}
+}
+
+// resolveVersion prefers a version set at link time, then the module version
+// Go recorded, then "dev". Go records "(devel)" when it knows none.
+func resolveVersion(linked, module string) string {
+	switch {
+	case linked != "" && linked != "dev":
+		return linked
+	case module != "" && module != "(devel)":
+		return module
+	}
+	return "dev"
+}
 
 func main() {
 	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
