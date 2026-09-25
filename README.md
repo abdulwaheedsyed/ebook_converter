@@ -1,4 +1,15 @@
-# Leafbind
+<p align="center">
+  <img src="docs/logo.svg" width="96" height="96" alt="">
+</p>
+
+<h1 align="center">Leafbind</h1>
+
+<p align="center">PDF to Kindle fixed-layout EPUB, with every page kept exactly.</p>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/leafbind-dark.png">
+  <img src="docs/screenshots/leafbind-light.png" alt="Leafbind's window, with three books: a slide deck and a scanned book converted and validated, and a novel part-way through converting.">
+</picture>
 
 Converts a PDF into a Kindle-compatible **fixed-layout EPUB 3**. Every page
 becomes an image on one shared canvas, so the original typesetting survives
@@ -338,6 +349,7 @@ conversion, ZIP packaging, XML and validation — is Go's standard library, plus
 make test         # all tests, including end-to-end conversions (about 20 s)
 make test-short   # unit tests only; skips anything that starts the PDF engine
 make notices      # regenerate THIRD_PARTY_NOTICES.md after changing dependencies
+go run ./tools/demodocs -o demo   # the sample PDFs shown in the screenshots
 ```
 
 CI runs the full test suite on every released platform for each push to

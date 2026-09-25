@@ -77,7 +77,9 @@ body {
   font: 14px/1.45 var(--font);
   -webkit-font-smoothing: antialiased;
 }
-.sprite { display: none; }
+/* Hidden by size, not display:none: Chrome does not paint a gradient
+   defined inside a display:none subtree, and the logo uses one. */
+.sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
 svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
 h1, h2 { margin: 0; font-weight: 600; letter-spacing: -.01em; }
 [hidden] { display: none !important; }
@@ -188,7 +190,7 @@ h1, h2 { margin: 0; font-weight: 600; letter-spacing: -.01em; }
   border-radius: 6px; background: var(--sunken); border: 1px solid var(--border);
 }
 .cover.landscape { aspect-ratio: 4 / 3; margin-top: 10px; }
-.cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cover img { width: 100%; height: 100%; object-fit: contain; display: block; }
 .cover .placeholder { color: var(--muted); width: 22px; height: 22px; }
 .job.inspecting .cover { background: linear-gradient(100deg, var(--sunken) 30%, var(--surface-2) 50%, var(--sunken) 70%) 0 0 / 200% 100%; animation: shimmer 1.2s linear infinite; }
 @keyframes shimmer { to { background-position: -200% 0; } }
