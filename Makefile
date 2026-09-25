@@ -10,7 +10,7 @@ PLATFORMS := linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64 win
 
 export CGO_ENABLED := 0
 
-.PHONY: build test test-short dist clean
+.PHONY: build test test-short dist notices clean
 
 build:
 	go build -trimpath -ldflags "$(LDFLAGS)" -o $(BINARY) .
@@ -30,6 +30,11 @@ dist:
 		echo "building $$out"; \
 		GOOS=$$os GOARCH=$$arch go build -trimpath -ldflags "$(LDFLAGS)" -o $$out . || exit 1; \
 	done
+	@cp LICENSE THIRD_PARTY_NOTICES.md dist/
+
+# Regenerate after changing dependencies; the tests fail until you do.
+notices:
+	go run ./tools/gennotices
 
 clean:
 	rm -rf dist $(BINARY) $(BINARY).exe

@@ -72,6 +72,9 @@ func TestParseArgsHelpAndVersion(t *testing.T) {
 	if _, err := parseArgs([]string{"--version"}); !errors.Is(err, errVersion) {
 		t.Errorf("--version: got %v", err)
 	}
+	if _, err := parseArgs([]string{"--licenses"}); !errors.Is(err, errLicenses) {
+		t.Errorf("--licenses: got %v", err)
+	}
 }
 
 func TestValidLang(t *testing.T) {

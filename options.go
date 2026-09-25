@@ -49,8 +49,9 @@ func defaultOptions() Options {
 }
 
 var (
-	errHelp    = errors.New("help requested")
-	errVersion = errors.New("version requested")
+	errHelp     = errors.New("help requested")
+	errVersion  = errors.New("version requested")
+	errLicenses = errors.New("licenses requested")
 )
 
 const usageText = `Convert a PDF into a Kindle-compatible fixed-layout EPUB 3.
@@ -75,6 +76,7 @@ Options:
   -v, --verbose      Print one line per page
   -h, --help         Show this help
   --version          Show the version
+  --licenses         Show the license and third-party notices
 
 Exit status: 0 success, 1 conversion or validation failure, 2 usage error.
 `
@@ -155,6 +157,8 @@ func parseArgs(args []string) (Options, error) {
 			return o, errHelp
 		case "version":
 			return o, errVersion
+		case "licenses":
+			return o, errLicenses
 		}
 		s, ok := flags[name]
 		if !ok {

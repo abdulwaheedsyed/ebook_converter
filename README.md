@@ -67,6 +67,7 @@ Options may appear anywhere on the command line, as `--name value`,
 | `--no-epubcheck` | off | Skip the external epubcheck even when it is installed. |
 | `-v`, `--verbose` | off | Print one line per page. |
 | `--version` | | Print the version. |
+| `--licenses` | | Print the license and third-party notices. |
 
 Exit status is `0` on success, `1` when conversion or validation fails, and
 `2` for a usage error.
@@ -232,7 +233,11 @@ packaging, XML and validation — is Go's standard library plus
 ```bash
 make test         # all tests, including end-to-end conversions (about 20 s)
 make test-short   # unit tests only; skips anything that starts the PDF engine
+make notices      # regenerate THIRD_PARTY_NOTICES.md after changing dependencies
 ```
+
+The tests fail if a linked module is missing from `THIRD_PARTY_NOTICES.md` or
+listed at the wrong version, so the notices cannot silently go stale.
 
 The end-to-end tests generate their own PDFs, so no sample documents are
 needed. They cover landscape and portrait detection, `/Rotate`, pages of
@@ -252,3 +257,18 @@ input. The validator is tested against deliberately broken packages.
 - **Files are larger than a libjpeg encoder would make.** Go's JPEG encoder
   uses the standard Huffman tables rather than optimised ones, which costs
   roughly 10% in file size.
+
+## License
+
+ebook_converter is released under the [MIT License](LICENSE).
+
+Its executables include third-party software under their own licenses — Go,
+the Go modules it uses, and PDFium with the libraries compiled into its
+WebAssembly build. [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) lists them
+with their full license texts. The same text is embedded in every binary and
+printed by `ebook_converter --licenses`, and `make dist` places both files
+beside the binaries it builds.
+
+This software is based in part on the work of the FreeType Team.
+
+This software is based in part on the work of the Independent JPEG Group.

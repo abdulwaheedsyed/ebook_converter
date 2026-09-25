@@ -38,6 +38,9 @@ func run(args []string, stdout, stderr io.Writer) int {
 	case errors.Is(err, errVersion):
 		fmt.Fprintln(stdout, "ebook_converter", version)
 		return 0
+	case errors.Is(err, errLicenses):
+		fmt.Fprint(stdout, licenseText, "\n", noticesText)
+		return 0
 	case err != nil:
 		fmt.Fprintf(stderr, "error: %v\n\n%s", err, usageText)
 		return 2
