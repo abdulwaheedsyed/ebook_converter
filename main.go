@@ -10,7 +10,6 @@ import (
 	"errors"
 	"fmt"
 	"image"
-	"image/jpeg"
 	"io"
 	"os"
 	"os/signal"
@@ -310,7 +309,7 @@ func buildPage(w *worker, i int, size, canvas Size, o Options) (Page, bool, erro
 	}
 
 	var buf bytes.Buffer
-	if err := jpeg.Encode(&buf, enc, &jpeg.Options{Quality: o.Quality}); err != nil {
+	if err := encodeJPEG(&buf, enc, o.Quality); err != nil {
 		return Page{}, false, fmt.Errorf("page %d: encoding: %w", i+1, err)
 	}
 	return Page{JPEG: buf.Bytes(), Size: target, Source: size, Orient: size.Orientation()}, fl.Active, nil

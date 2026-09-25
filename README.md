@@ -20,6 +20,9 @@ ImageMagick, no zip tool, no Java.
 - **Right-to-left or left-to-right** page progression.
 - **Validates its own output**, and runs [epubcheck](https://github.com/w3c/epubcheck)
   as well when it is installed.
+- **Compact.** A built-in JPEG encoder builds Huffman tables for each page
+  from its own statistics — lossless, and typically 5–10% smaller than
+  Go's standard encoder.
 - **Fast.** Pages are rendered in parallel.
 - **Cross-platform.** Linux, macOS and Windows, on x86-64 and ARM64.
 
@@ -148,9 +151,11 @@ If the pages are single images, pass their ppi as `--dpi`.
    Nothing is cropped or stretched. The padding colour is sampled from the edge
    being padded, so letterbox bars blend with the page.
 4. **Convert.** Optionally greyscale and background flattening.
-5. **Package.** Standard EPUB 3 fixed-layout metadata, plus Kindle's own
+5. **Encode.** Each page is written as a baseline JPEG with Huffman tables
+   optimised for that page.
+6. **Package.** Standard EPUB 3 fixed-layout metadata, plus Kindle's own
    fixed-layout metadata. Page 1 becomes the cover.
-6. **Validate** the package that was written.
+7. **Validate** the package that was written.
 
 ### Why one canvas
 
@@ -224,8 +229,8 @@ to WebAssembly and run inside the process by
 runtime. This is what keeps the binary free of cgo and system libraries.
 
 The PDF engine runs sandboxed with no filesystem access; the PDF is passed to
-it in memory. Everything else — scaling, colour conversion, JPEG encoding, ZIP
-packaging, XML and validation — is Go's standard library plus
+it in memory. JPEG encoding is the program's own. Everything else — colour
+conversion, ZIP packaging, XML and validation — is Go's standard library, plus
 [golang.org/x/image](https://pkg.go.dev/golang.org/x/image) for resampling.
 
 ## Development
@@ -242,7 +247,9 @@ listed at the wrong version, so the notices cannot silently go stale.
 The end-to-end tests generate their own PDFs, so no sample documents are
 needed. They cover landscape and portrait detection, `/Rotate`, pages of
 differing sizes, `--mixed`, greyscale with background flattening, and invalid
-input. The validator is tested against deliberately broken packages.
+input. The validator is tested against deliberately broken packages. The
+JPEG encoder is tested for lossless optimisation, valid length-limited code
+tables, minimal padding blocks, and quality against `image/jpeg`.
 
 ## Notes
 
@@ -254,9 +261,15 @@ input. The validator is tested against deliberately broken packages.
 - **Output is written atomically.** The EPUB is written to a temporary file
   beside the destination and renamed into place, so an interrupted run never
   leaves a half-written book or destroys an existing one.
-- **Files are larger than a libjpeg encoder would make.** Go's JPEG encoder
-  uses the standard Huffman tables rather than optimised ones, which costs
-  roughly 10% in file size.
+- **JPEG encoding.** Go's `image/jpeg` always uses the example Huffman tables
+  from the JPEG specification. This program's encoder instead gathers each
+  page's symbol statistics and builds length-limited optimal tables, the
+  procedure of Annex K.2 of the specification and what libjpeg's
+  `optimize_coding` does. Output is baseline JPEG for the widest reader
+  support: one component for greyscale, YCbCr with 4:2:0 subsampling for
+  colour. The optimisation is lossless — the tests check that decoded pixels
+  are identical to an encoding with the standard tables — and `jpegtran
+  -optimize` finds nothing further to remove.
 
 ## License
 
