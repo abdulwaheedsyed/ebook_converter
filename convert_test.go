@@ -56,6 +56,25 @@ func convertBytes(t *testing.T, pdf []byte, dpi string, extra ...string) (Option
 	return o, data
 }
 
+// convertErr converts a PDF and returns the error, for failures that are
+// expected.
+func convertErr(t *testing.T, pdf []byte, extra ...string) (string, error) {
+	t.Helper()
+	dir := t.TempDir()
+	in, out := filepath.Join(dir, "in.pdf"), filepath.Join(dir, "out.epub")
+	if err := os.WriteFile(in, pdf, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	args := append([]string{"--dpi", "36", "--no-epubcheck", "--jobs", "1"}, extra...)
+	o, err := parseArgs(append(args, in, out))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var log bytes.Buffer
+	_, err = convert(context.Background(), o, &log)
+	return log.String(), err
+}
+
 func zipFile(t *testing.T, data []byte, name string) []byte {
 	t.Helper()
 	zr, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))

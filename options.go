@@ -30,6 +30,8 @@ type Options struct {
 	Orient    string // "" means detect
 	Mixed     bool
 	TOC       string // tocBookmarks or tocPages
+	Pages     string // page range; "" converts every page
+	Password  string // for an encrypted PDF
 	Validate  bool
 	Epubcheck bool
 	Jobs      int
@@ -90,6 +92,8 @@ Options:
   --mixed            Keep per-page canvases instead of one shared canvas
   --toc X            Contents from the PDF's bookmarks, or one entry per
                      page: bookmarks or pages        (default bookmarks)
+  --pages RANGE      Convert only these pages, such as 1-20,25,30-
+  --password TEXT    Open an encrypted PDF; LEAFBIND_PASSWORD also works
   --jobs N           Pages rendered in parallel      (default: CPUs, max 6)
   --no-validate      Skip all validation
   --no-epubcheck     Skip the external epubcheck even when it is installed
@@ -171,6 +175,14 @@ func parseArgs(args []string) (Options, error) {
 			o.TOC = v
 			return nil
 		}},
+		"pages": {true, func(v string) error {
+			if _, err := parsePages(v); err != nil {
+				return fmt.Errorf("--pages: %w", err)
+			}
+			o.Pages = v
+			return nil
+		}},
+		"password": {true, func(v string) error { o.Password = v; return nil }},
 		"orientation": {true, func(v string) error {
 			switch v {
 			case "portrait", "landscape", "auto", "none":

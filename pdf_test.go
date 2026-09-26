@@ -2,6 +2,9 @@ package main
 
 import (
 	"bytes"
+	"crypto/md5"
+	"crypto/rc4"
+	"encoding/binary"
 	"fmt"
 	"strings"
 )
@@ -31,6 +34,58 @@ type testPDF struct {
 	Outline []testBookmark
 	Loop    bool   // the last top-level bookmark's /Next points back to the first
 	Labels  string // a /PageLabels /Nums array body, e.g. "0 << /S /r >> 2 << /S /D >>"
+	// Password encrypts the document with the standard security handler,
+	// revision 2 (40-bit RC4), with this as the password needed to open it.
+	Password string
+}
+
+// pdfPadding pads passwords, from the PDF specification (7.6.3.3).
+var pdfPadding = []byte("\x28\xBF\x4E\x5E\x4E\x75\x8A\x41\x64\x00\x4E\x56\xFF\xFA\x01\x08" +
+	"\x2E\x2E\x00\xB6\xD0\x68\x3E\x80\x2F\x0C\xA9\xFE\x64\x53\x69\x7A")
+
+func padPassword(pw string) []byte {
+	return append([]byte(pw), pdfPadding...)[:32]
+}
+
+func rc4Crypt(key, data []byte) []byte {
+	c, _ := rc4.NewCipher(key)
+	out := make([]byte, len(data))
+	c.XORKeyStream(out, data)
+	return out
+}
+
+// pdfEncryption holds the file key and the /Encrypt entries of a document
+// encrypted by revision 2 of the standard security handler.
+type pdfEncryption struct {
+	key   []byte
+	o, u  []byte
+	id    []byte
+	perms int32
+}
+
+func newPDFEncryption(password string) *pdfEncryption {
+	e := &pdfEncryption{id: []byte("leafbind-test-id"), perms: -4}
+	// Algorithm 3: the owner entry, with the owner password the same as the user's.
+	ok := md5.Sum(padPassword(password))
+	e.o = rc4Crypt(ok[:5], padPassword(password))
+	// Algorithm 2: the file key.
+	h := md5.New()
+	h.Write(padPassword(password))
+	h.Write(e.o)
+	binary.Write(h, binary.LittleEndian, e.perms)
+	h.Write(e.id)
+	e.key = h.Sum(nil)[:5]
+	// Algorithm 4: the user entry.
+	e.u = rc4Crypt(e.key, pdfPadding)
+	return e
+}
+
+// crypt encrypts an object's stream data with that object's key.
+func (e *pdfEncryption) crypt(num int, data []byte) []byte {
+	h := md5.New()
+	h.Write(e.key)
+	h.Write([]byte{byte(num), byte(num >> 8), byte(num >> 16), 0, 0})
+	return rc4Crypt(h.Sum(nil)[:10], data)
 }
 
 // makePDF writes a minimal, valid PDF with exact cross-reference offsets, so
@@ -43,6 +98,17 @@ func makePDFWith(pages []testPage, doc testPDF) []byte {
 	obj := func(body string) {
 		offsets = append(offsets, b.Len())
 		fmt.Fprintf(&b, "%d 0 obj\n%s\nendobj\n", len(offsets), body)
+	}
+	var enc *pdfEncryption
+	if doc.Password != "" {
+		enc = newPDFEncryption(doc.Password)
+	}
+	// stream writes a stream object, encrypted when the document is.
+	stream := func(dict string, data []byte) {
+		if enc != nil {
+			data = enc.crypt(len(offsets)+1, data)
+		}
+		obj(fmt.Sprintf("<< %s /Length %d >>\nstream\n%s\nendstream", dict, len(data), data))
 	}
 
 	b.WriteString("%PDF-1.4\n")
@@ -131,12 +197,12 @@ func makePDFWith(pages []testPage, doc testPDF) []byte {
 		}
 		obj(fmt.Sprintf("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 %g %g] /Rotate %d /Resources %s /Contents %d 0 R >>",
 			p.W, p.H, p.Rotate, res, 4+3*i))
-		obj(fmt.Sprintf("<< /Length %d >>\nstream\n%sendstream", c.Len(), c.String()))
+		stream("", []byte(c.String()))
 		switch {
 		case p.Scan != nil:
 			px := bytes.Repeat([]byte{200}, p.Scan.W*p.Scan.H)
-			obj(fmt.Sprintf("<< /Type /XObject /Subtype /Image /Width %d /Height %d /ColorSpace /DeviceGray /BitsPerComponent 8 /Length %d >>\nstream\n%s\nendstream",
-				p.Scan.W, p.Scan.H, len(px), px))
+			stream(fmt.Sprintf("/Type /XObject /Subtype /Image /Width %d /Height %d /ColorSpace /DeviceGray /BitsPerComponent 8",
+				p.Scan.W, p.Scan.H), px)
 		case p.Text:
 			obj("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>")
 		default:
@@ -153,6 +219,11 @@ func makePDFWith(pages []testPage, doc testPDF) []byte {
 	for _, o := range offsets {
 		fmt.Fprintf(&b, "%010d 00000 n \n", o)
 	}
-	fmt.Fprintf(&b, "trailer\n<< /Size %d /Root 1 0 R >>\nstartxref\n%d\n%%%%EOF\n", len(offsets)+1, xref)
+	trailer := ""
+	if enc != nil {
+		trailer = fmt.Sprintf(" /Encrypt << /Filter /Standard /V 1 /R 2 /O <%x> /U <%x> /P %d >> /ID [<%x> <%x>]",
+			enc.o, enc.u, enc.perms, enc.id, enc.id)
+	}
+	fmt.Fprintf(&b, "trailer\n<< /Size %d /Root 1 0 R%s >>\nstartxref\n%d\n%%%%EOF\n", len(offsets)+1, trailer, xref)
 	return b.Bytes()
 }

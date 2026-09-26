@@ -135,6 +135,8 @@ type jobView struct {
 	Done     int          `json:"done"`
 	Total    int          `json:"total"`
 	HasCover bool         `json:"hasCover"`
+	Locked   bool         `json:"locked,omitempty"`    // needs a password to open
+	Range    string       `json:"pageRange,omitempty"` // pages to convert; "" is all
 	Result   *resultView  `json:"result,omitempty"`
 	Error    string       `json:"error,omitempty"`
 	Settings *jobSettings `json:"settings,omitempty"`
@@ -148,6 +150,7 @@ type codeCount struct {
 
 type resultView struct {
 	Pages       int         `json:"pages"`
+	Of          int         `json:"of"` // pages in the PDF
 	Canvas      string      `json:"canvas"`
 	Orientation string      `json:"orientation"`
 	DPI         int         `json:"dpi"`
@@ -166,13 +169,14 @@ type resultView struct {
 }
 
 type job struct {
-	view    jobView
-	pdf     string
-	epub    string
-	cover   []byte
-	book    *previewBook // read back from the EPUB on first preview
-	cancel  context.CancelFunc
-	lastPub time.Time
+	view     jobView
+	pdf      string
+	epub     string
+	cover    []byte
+	password string       // for an encrypted PDF; kept in memory only
+	book     *previewBook // read back from the EPUB on first preview
+	cancel   context.CancelFunc
+	lastPub  time.Time
 }
 
 type guiServer struct {
@@ -348,6 +352,7 @@ func (s *guiServer) handler() http.Handler {
 	api.HandleFunc("POST /api/files", s.upload)
 	api.HandleFunc("POST /api/convert", s.convert)
 	api.HandleFunc("PATCH /api/jobs/{id}", s.rename)
+	api.HandleFunc("POST /api/jobs/{id}/unlock", s.unlock)
 	api.HandleFunc("DELETE /api/jobs/{id}", s.remove)
 	api.HandleFunc("GET /api/jobs/{id}/epub", s.download)
 	api.HandleFunc("GET /api/jobs/{id}/cover", s.coverImage)
@@ -600,6 +605,7 @@ func (s *guiServer) inspect(id string) {
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		j.view.State, j.view.Error = stateFailed, err.Error()
+		j.view.Locked = errors.Is(err, errPasswordNeeded) || errors.Is(err, errPasswordWrong)
 		s.publish(j, true)
 	}
 
@@ -613,7 +619,10 @@ func (s *guiServer) inspect(id string) {
 		fail(err)
 		return
 	}
-	wk, err := eng.newWorker(data)
+	s.mu.Lock()
+	password := j.password
+	s.mu.Unlock()
+	wk, err := eng.newWorker(data, password)
 	if err != nil {
 		fail(err)
 		return
@@ -632,7 +641,7 @@ func (s *guiServer) inspect(id string) {
 		fail(err)
 		return
 	}
-	ppi, scan := wk.scanPPI(n)
+	ppi, scan := wk.scanPPI(allPages(n))
 	// Render the cover at about the 360 pixels wide the preview needs.
 	var cover []byte
 	if img, err := wk.render(0, max(8, min(150, 360*72/max(1, first.W)))); err == nil {
@@ -659,6 +668,7 @@ type convertRequest struct {
 	IDs      []string          `json:"ids"`
 	Settings jobSettings       `json:"settings"`
 	Titles   map[string]string `json:"titles"`
+	Pages    map[string]string `json:"pages"` // page range per file; missing or "" is all
 }
 
 func (s *guiServer) convert(w http.ResponseWriter, r *http.Request) {
@@ -685,6 +695,16 @@ func (s *guiServer) convert(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, j.view.File+": "+err.Error(), http.StatusBadRequest)
 			return
 		}
+		if r := strings.TrimSpace(req.Pages[id]); r != "" && j.view.Pages > 0 {
+			spans, err := parsePages(r)
+			if err == nil {
+				_, err = selectPages(spans, j.view.Pages)
+			}
+			if err != nil {
+				http.Error(w, j.view.File+": pages: "+err.Error(), http.StatusBadRequest)
+				return
+			}
+		}
 	}
 	queued := 0
 	for _, id := range req.IDs {
@@ -702,6 +722,7 @@ func (s *guiServer) convert(w http.ResponseWriter, r *http.Request) {
 		}
 		st := req.Settings
 		j.view.Settings = &st
+		j.view.Range = strings.TrimSpace(req.Pages[id])
 		j.view.State, j.view.Error, j.view.Result = stateQueued, "", nil
 		j.view.Stage, j.view.Done, j.view.Total = "", 0, 0
 		s.publish(j, true)
@@ -709,6 +730,31 @@ func (s *guiServer) convert(w http.ResponseWriter, r *http.Request) {
 		queued++
 	}
 	writeJSON(w, http.StatusAccepted, map[string]int{"queued": queued})
+}
+
+// unlock retries opening an encrypted PDF with a password.
+func (s *guiServer) unlock(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Password string `json:"password"`
+	}
+	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<16)).Decode(&body); err != nil || body.Password == "" {
+		http.Error(w, "a password is required", http.StatusBadRequest)
+		return
+	}
+	id := r.PathValue("id")
+	s.mu.Lock()
+	j, ok := s.all[id]
+	if !ok || !j.view.Locked || j.view.State != stateFailed {
+		s.mu.Unlock()
+		http.Error(w, "that file is not waiting for a password", http.StatusConflict)
+		return
+	}
+	j.password = body.Password
+	j.view.State, j.view.Error, j.view.Locked = stateInspecting, "", false
+	s.publish(j, true)
+	s.mu.Unlock()
+	go s.inspect(id)
+	w.WriteHeader(http.StatusAccepted)
 }
 
 func (s *guiServer) rename(w http.ResponseWriter, r *http.Request) {
@@ -786,6 +832,7 @@ func (s *guiServer) runJob(id string) {
 		return
 	}
 	o, err := j.view.Settings.options(j.view.Title, j.pdf, j.epub, s.jobs)
+	o.Pages, o.Password = j.view.Range, j.password
 	ctx, cancel := context.WithCancel(s.ctx)
 	j.cancel = cancel
 	j.book = nil
@@ -832,7 +879,7 @@ func (s *guiServer) runJob(id string) {
 
 func newResultView(r *Result, o Options) *resultView {
 	v := &resultView{
-		Pages: r.Pages, Orientation: r.Orient.Book, DPI: r.DPI, Scan: r.Scan,
+		Pages: r.Pages, Of: r.Of, Orientation: r.Orient.Book, DPI: r.DPI, Scan: r.Scan,
 		Bytes: r.Bytes, Seconds: r.Elapsed.Seconds(), Flattened: r.Flattened, TOC: r.TOC,
 		Validated: r.Validated, Passed: r.Passed, Epubcheck: "skipped",
 		Built: time.Now().UnixNano(),

@@ -81,8 +81,15 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return runCheck(o.Check, stdout, stderr)
 	}
 
+	if o.Password == "" {
+		o.Password = os.Getenv("LEAFBIND_PASSWORD")
+	}
 	ok, err := convert(ctx, o, stdout)
-	if err != nil {
+	switch {
+	case errors.Is(err, errPasswordNeeded):
+		fmt.Fprintf(stderr, "error: %v; give its password with --password, or in LEAFBIND_PASSWORD\n", err)
+		return 1
+	case err != nil:
 		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 1
 	}
@@ -132,8 +139,12 @@ func convert(ctx context.Context, o Options, out io.Writer) (bool, error) {
 	rendering := false
 	res, err := convertBook(ctx, eng, o, func(e Event) {
 		if p := e.Plan; p != nil {
-			say("Pages       : %d (%d landscape, %d portrait, %d square)\n",
-				p.Pages, p.Tally["landscape"], p.Tally["portrait"], p.Tally["square"])
+			of := ""
+			if p.Of != p.Pages {
+				of = fmt.Sprintf(" of %d", p.Of)
+			}
+			say("Pages       : %d%s (%d landscape, %d portrait, %d square)\n",
+				p.Pages, of, p.Tally["landscape"], p.Tally["portrait"], p.Tally["square"])
 			if p.Scan {
 				say("Resolution  : %d DPI (scan, native resolution)\n", p.DPI)
 			} else {

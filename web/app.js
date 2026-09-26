@@ -183,6 +183,18 @@ function card(job) {
     try { await api(`/api/jobs/${job.id}`, { method: "DELETE" }); } catch (err) { toast(err.message); }
   });
   $(".again", li).addEventListener("click", () => convert([job.id]));
+  const pages = $(".pages", li);
+  pages.addEventListener("keydown", (e) => { if (e.key === "Enter") pages.blur(); });
+  pages.addEventListener("input", () => { pages.dataset.touched = "1"; });
+  $(".unlock", li).addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const pw = $(".password", li);
+    if (!pw.value) { pw.focus(); return; }
+    try {
+      await api(`/api/jobs/${job.id}/unlock`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password: pw.value }) });
+      pw.value = "";
+    } catch (err) { toast(err.message); }
+  });
   $(".preview-btn", li).addEventListener("click", () => openPreview(job.id));
   $(".cover", li).addEventListener("click", () => { if (state.jobs.get(job.id).state === "done") openPreview(job.id); });
   cards.set(job.id, li);
@@ -192,15 +204,26 @@ function card(job) {
 function renderJob(job) {
   const li = card(job);
   li.className = "job " + job.state;
-  const [label, tone] = badgeFor[job.state] || [job.state, ""];
+  const [label, tone] = job.locked ? ["Locked", "warn"] : badgeFor[job.state] || [job.state, ""];
   const badge = $(".badge", li);
   badge.className = "badge " + tone;
-  badge.innerHTML = (job.state === "done" ? icon("check") : job.state === "failed" ? icon("alert") : "") + label;
+  badge.innerHTML = (job.state === "done" ? icon("check") : job.locked ? icon("lock") : job.state === "failed" ? icon("alert") : "") + label;
 
   const title = $(".title", li);
   if (document.activeElement !== title) title.value = job.title;
   const busy = job.state === "queued" || job.state === "converting";
   title.disabled = busy;
+
+  // A page range, once the page count is known; a password, for a locked PDF.
+  const range = $(".range", li), pagesIn = $(".pages", li);
+  range.hidden = !job.pages;
+  pagesIn.disabled = busy;
+  pagesIn.placeholder = job.pages ? `All ${job.pages}` : "All";
+  if (document.activeElement !== pagesIn && !pagesIn.dataset.touched) pagesIn.value = job.pageRange || "";
+  const unlock = $(".unlock", li);
+  const wasHidden = unlock.hidden;
+  unlock.hidden = !job.locked;
+  if (job.locked && wasHidden) $(".password", li).focus();
 
   // Cover preview, shaped to the page's orientation.
   const cover = $(".cover", li), img = $("img", cover);
@@ -214,7 +237,8 @@ function renderJob(job) {
   }
 
   const meta = [job.file];
-  if (job.pages) meta.push(plural(job.pages, "page"));
+  if (job.result && job.result.of && job.result.pages !== job.result.of) meta.push(`${job.result.pages} of ${plural(job.result.of, "page")}`);
+  else if (job.pages) meta.push(plural(job.pages, "page"));
   meta.push(fmtBytes(job.bytes));
   const m = $(".meta", li);
   m.textContent = meta.join(" · ");
@@ -271,7 +295,9 @@ function renderJob(job) {
 
   const err = $(".error", li);
   err.hidden = !job.error;
-  err.textContent = job.error || "";
+  err.classList.toggle("locked", !!job.locked);
+  err.textContent = job.locked && job.error === "the PDF is password protected"
+    ? "This PDF is password protected. Enter its password to open it." : job.error || "";
 
   li.classList.toggle("previewable", job.state === "done");
   $(".preview-btn", li).hidden = job.state !== "done";
@@ -562,13 +588,15 @@ async function addFiles(fileList) {
 async function convert(ids) {
   const settings = readSettings();
   if (!settings.lang) { toast("Enter a language tag, or choose a language."); els.langOther.focus(); return; }
-  const titles = {};
+  const titles = {}, pages = {};
   for (const id of ids) {
     const li = cards.get(id);
-    if (li) titles[id] = $(".title", li).value.trim() || state.jobs.get(id).title;
+    if (!li) continue;
+    titles[id] = $(".title", li).value.trim() || state.jobs.get(id).title;
+    pages[id] = $(".pages", li).value.trim();
   }
   try {
-    await api("/api/convert", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids, settings, titles }) });
+    await api("/api/convert", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids, settings, titles, pages }) });
   } catch (err) { toast(err.message); }
 }
 

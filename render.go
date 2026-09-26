@@ -66,23 +66,34 @@ type worker struct {
 
 // newWorker takes an instance from the pool and opens pdf in it. Close
 // returns the instance to the pool.
-func (e *engine) newWorker(pdf []byte) (*worker, error) {
+func (e *engine) newWorker(pdf []byte, password string) (*worker, error) {
 	inst, err := e.pool.GetInstance(5 * time.Minute)
 	if err != nil {
 		return nil, fmt.Errorf("starting PDF engine instance: %w", err)
 	}
-	doc, err := inst.OpenDocument(&requests.OpenDocument{File: &pdf})
+	req := &requests.OpenDocument{File: &pdf}
+	if password != "" {
+		req.Password = &password
+	}
+	doc, err := inst.OpenDocument(req)
 	if err != nil {
 		inst.Close()
-		return nil, describeOpenError(err)
+		return nil, describeOpenError(err, password != "")
 	}
 	return &worker{inst: inst, doc: doc.Document}, nil
 }
 
-func describeOpenError(err error) error {
+var (
+	errPasswordNeeded = errors.New("the PDF is password protected")
+	errPasswordWrong  = errors.New("the password is not right for this PDF")
+)
+
+func describeOpenError(err error, withPassword bool) error {
 	switch {
+	case errors.Is(err, pdferr.ErrPassword) && withPassword:
+		return errPasswordWrong
 	case errors.Is(err, pdferr.ErrPassword):
-		return errors.New("the PDF is password protected")
+		return errPasswordNeeded
 	case errors.Is(err, pdferr.ErrFormat):
 		return errors.New("the file is not a valid PDF, or is damaged")
 	case errors.Is(err, pdferr.ErrSecurity):
@@ -146,16 +157,14 @@ func (w *worker) render(i, dpi int) (*image.RGBA, error) {
 // Nine pages spread through the book are sampled, and all must be scans. The
 // resolution is their median: covers are often scanned finer than the body,
 // and should not decide the resolution of every page.
-func (w *worker) scanPPI(pages int) (int, bool) {
+func (w *worker) scanPPI(pages []int) (int, bool) {
 	const samples = 9
 	var idx []int
-	if pages <= samples {
-		for i := range pages {
-			idx = append(idx, i)
-		}
+	if len(pages) <= samples {
+		idx = pages
 	} else {
 		for k := range samples {
-			idx = append(idx, k*(pages-1)/(samples-1))
+			idx = append(idx, pages[k*(len(pages)-1)/(samples-1)])
 		}
 	}
 

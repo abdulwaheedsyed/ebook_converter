@@ -65,7 +65,7 @@ complete workflow still reaches outside the binary.
 
 ## Features
 
-- [ ] `--password` for encrypted PDFs.
-- [ ] Converting a page range.
+- [x] `--password` for encrypted PDFs, and unlocking them in the GUI.
+- [x] Converting a page range (`--pages`, or per book in the GUI).
 - [x] A table of contents from the PDF's outline, where it has one, and a
   page list from its page labels.

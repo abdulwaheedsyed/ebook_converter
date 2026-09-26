@@ -38,9 +38,10 @@ const (
 var errOutlineDamaged = errors.New("the outline is too large or loops back on itself")
 
 // outline reads the document's bookmarks and returns them tidied for a
-// table of contents: every entry has a title and a page in 0..pages-1.
-// A document without bookmarks has an empty outline.
-func (w *worker) outline(pages int) ([]TOCEntry, error) {
+// table of contents: every entry has a title and a page of the book. slot
+// maps a PDF page to its page in the book, or -1 when the book leaves it
+// out. A document without bookmarks has an empty outline.
+func (w *worker) outline(slot func(int) int) ([]TOCEntry, error) {
 	count := 0
 	var walk func(parent *references.FPDF_BOOKMARK, depth int) ([]TOCEntry, error)
 	walk = func(parent *references.FPDF_BOOKMARK, depth int) ([]TOCEntry, error) {
@@ -84,7 +85,7 @@ func (w *worker) outline(pages int) ([]TOCEntry, error) {
 	if all, err := w.inst.GetBookmarks(&requests.GetBookmarks{Document: w.doc}); err == nil {
 		addDestinations(raw, all.Bookmarks)
 	}
-	return tidyOutline(raw, pages), nil
+	return tidyOutline(raw, slot), nil
 }
 
 // addDestinations fills in the pages of entries whose bookmark names its
@@ -122,15 +123,18 @@ func (w *worker) bookmarkPage(bm references.FPDF_BOOKMARK) int {
 	return p.Index
 }
 
-// tidyOutline makes an outline fit for a navigation document. An entry
-// without a page in the book opens its first child's page instead, or is
-// dropped when it has no children; an entry without a title is named after
-// its page.
-func tidyOutline(entries []TOCEntry, pages int) []TOCEntry {
+// tidyOutline makes an outline fit for a navigation document, with pages
+// mapped into the book by slot. An entry without a page in the book opens
+// its first child's page instead, or is dropped when it has no children; an
+// entry without a title is named after its page.
+func tidyOutline(entries []TOCEntry, slot func(int) int) []TOCEntry {
 	var out []TOCEntry
 	for _, e := range entries {
-		e.Children = tidyOutline(e.Children, pages)
-		if e.Page < 0 || e.Page >= pages {
+		e.Children = tidyOutline(e.Children, slot)
+		if e.Page >= 0 {
+			e.Page = slot(e.Page)
+		}
+		if e.Page < 0 {
 			if len(e.Children) == 0 {
 				continue
 			}
@@ -168,24 +172,17 @@ func countEntries(entries []TOCEntry) int {
 	return n
 }
 
-// pageLabels returns the page labels the PDF defines, such as "iv" for a
-// preface page, or nil when it defines none.
-func (w *worker) pageLabels(pages int) []string {
-	labels := make([]string, pages)
-	found := false
-	for i := range pages {
-		res, err := w.inst.FPDF_GetPageLabel(&requests.FPDF_GetPageLabel{Document: w.doc, Page: i})
-		if err == nil {
-			labels[i] = cleanTitle(res.Label)
+// pageLabels names the given PDF pages: by the page labels the PDF
+// defines, such as "iv" for a preface page, or else by their page numbers.
+func (w *worker) pageLabels(pages []int) []string {
+	labels := make([]string, len(pages))
+	for k, i := range pages {
+		if res, err := w.inst.FPDF_GetPageLabel(&requests.FPDF_GetPageLabel{Document: w.doc, Page: i}); err == nil {
+			labels[k] = cleanTitle(res.Label)
 		}
-		if labels[i] == "" {
-			labels[i] = strconv.Itoa(i + 1)
-		} else {
-			found = true
+		if labels[k] == "" {
+			labels[k] = strconv.Itoa(i + 1)
 		}
-	}
-	if !found {
-		return nil
 	}
 	return labels
 }

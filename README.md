@@ -45,6 +45,8 @@ Previewer, or Send to Kindle, can then take the rest of the way.
 - **E-ink options.** 8-bit greyscale, and flattening of tinted page backgrounds
   to white for better contrast.
 - **Right-to-left or left-to-right** page progression.
+- **Page ranges and encrypted PDFs.** Convert only the pages you want, and
+  open password-protected PDFs.
 - **A real table of contents.** The PDF's bookmarks become the book's
   contents, nested as they are in the PDF, and its page labels (`iv`, `12`)
   let the Kindle go to a page by its printed number.
@@ -100,7 +102,8 @@ Double-click `leafbind`, or run it without arguments. It opens a
 window where you drop in PDFs, review each book's title, and choose the
 language, page order, colour and quality. Converted books are validated and
 offered for download, one at a time or all together. The window follows the
-system's light or dark theme.
+system's light or dark theme. Each book can be limited to a page range, and
+a password-protected PDF asks for its password, which is kept in memory only.
 
 **Preview** opens a finished book on a Kindle-sized screen, read back from the
 EPUB itself. Pages are scaled to fit the screen as a Kindle scales a
@@ -155,6 +158,8 @@ Options may appear anywhere on the command line, as `--name value`,
 | `--rtl` | LTR | Right-to-left page progression, for Arabic, Urdu, Hebrew and similar. `--ltr` selects the default explicitly. |
 | `--orientation X` | detected | Force `portrait`, `landscape`, `auto` or `none`. |
 | `--mixed` | off | Keep each page's own canvas instead of one shared canvas. |
+| `--pages RANGE` | all | Convert only these pages, such as `1-20,25,30-`; numbers are the PDF's page positions, from 1. The book keeps the PDF's page order. |
+| `--password TEXT` | | Password of an encrypted PDF. `LEAFBIND_PASSWORD` in the environment works too, and keeps it out of the process list. |
 | `--toc X` | `bookmarks` | Table of contents: `bookmarks`, from the PDF's outline when it has one, otherwise one entry per page; or `pages`, always one entry per page. |
 | `--jobs N` | CPUs, max 6 | Pages rendered in parallel. |
 | `--no-validate` | off | Skip all validation. |
@@ -181,6 +186,18 @@ A right-to-left book, such as Arabic or Urdu:
 
 ```bash
 leafbind --grayscale --rtl --lang ar --title "Book Title" book.pdf book.epub
+```
+
+Part of a PDF, skipping the front matter and the index:
+
+```bash
+leafbind --pages 9-240 book.pdf book.epub
+```
+
+A password-protected PDF:
+
+```bash
+LEAFBIND_PASSWORD='the password' leafbind book.pdf book.epub
 ```
 
 A book printed on a tinted background:

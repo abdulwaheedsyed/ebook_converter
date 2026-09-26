@@ -75,7 +75,12 @@ func TestTidyOutline(t *testing.T) {
 		{Title: "Gone", Page: -1},
 		{Title: "Part", Page: -1, Children: []TOCEntry{{Title: "Beyond", Page: 99}, {Title: "Ch\x01 1", Page: 2}}},
 		{Title: " ", Page: 4},
-	}, 10)
+	}, func(p int) int {
+		if p < 10 {
+			return p
+		}
+		return -1
+	})
 	want := []TOCEntry{
 		{Title: "Part", Page: 2, Children: []TOCEntry{{Title: "Ch 1", Page: 2}}},
 		{Title: "5", Page: 4},

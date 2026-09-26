@@ -319,3 +319,62 @@ func TestGUISettingsContents(t *testing.T) {
 		t.Error("an unknown contents setting was accepted")
 	}
 }
+
+// A password-protected PDF waits for its password, and a page range
+// converts only the pages asked for.
+func TestGUIPasswordAndRange(t *testing.T) {
+	if testing.Short() {
+		t.Skip("starts the PDF engine; skipped with -short")
+	}
+	s, base := startGUI(t, true)
+	ch := events(t, s, base)
+	<-ch // snapshot
+
+	pages := []testPage{{W: 400, H: 600}, {W: 400, H: 600}, {W: 400, H: 600}, {W: 400, H: 600}}
+	views := upload(t, s, base, map[string][]byte{"locked.pdf": makePDFWith(pages, testPDF{Password: "s3cret"})})
+	id := views[0].ID
+	if v := waitJobs(t, ch, stateFailed, id)[id]; !v.Locked || v.Error != errPasswordNeeded.Error() {
+		t.Fatalf("locked PDF inspected as %+v", v)
+	}
+
+	tok := map[string]string{"X-Token": s.token}
+	unlock := func(pw string) int {
+		b, _ := json.Marshal(map[string]string{"password": pw})
+		return req(t, "POST", base+"/api/jobs/"+id+"/unlock", bytes.NewReader(b), tok).StatusCode
+	}
+	if code := unlock("wrong"); code != 202 {
+		t.Fatalf("unlock: status %d", code)
+	}
+	if v := waitJobs(t, ch, stateFailed, id)[id]; !v.Locked || v.Error != errPasswordWrong.Error() {
+		t.Fatalf("after a wrong password: %+v", v)
+	}
+	unlock("s3cret")
+	if v := waitJobs(t, ch, stateReady, id)[id]; v.Pages != 4 || v.Locked {
+		t.Fatalf("after the right password: %+v", v)
+	}
+	if code := unlock("again"); code != 409 {
+		t.Errorf("unlocking an open file: status %d, want 409", code)
+	}
+
+	// A range beyond the end is refused; a good one is converted.
+	convert := func(r string) int {
+		b, _ := json.Marshal(convertRequest{IDs: []string{id}, Settings: defaultSettings(), Pages: map[string]string{id: r}})
+		return req(t, "POST", base+"/api/convert", bytes.NewReader(b), tok).StatusCode
+	}
+	if code := convert("3-9"); code != 400 {
+		t.Errorf("range beyond the end: status %d, want 400", code)
+	}
+	if code := convert("2-3"); code != 202 {
+		t.Fatalf("convert: status %d", code)
+	}
+	v := waitJobs(t, ch, stateDone, id)[id]
+	if r := v.Result; r == nil || r.Pages != 2 || r.Of != 4 || !r.Passed || v.Range != "2-3" {
+		t.Fatalf("converted as %+v, result %+v", v, v.Result)
+	}
+	s.mu.Lock()
+	b, _ := json.Marshal(s.all[id].view)
+	s.mu.Unlock()
+	if bytes.Contains(b, []byte("s3cret")) {
+		t.Error("the password is sent to the page")
+	}
+}

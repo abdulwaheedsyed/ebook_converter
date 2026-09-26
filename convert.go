@@ -29,9 +29,10 @@ const (
 
 // Plan is what the converter decided once every page was measured.
 type Plan struct {
-	DPI    int  // resolution rendered at
-	Scan   bool // the PDF is a scan and DPI is its native resolution
-	Pages  int
+	DPI    int            // resolution rendered at
+	Scan   bool           // the PDF is a scan and DPI is its native resolution
+	Pages  int            // pages in the book
+	Of     int            // pages in the PDF
 	Tally  map[string]int // pages by orientation
 	Canvas Size
 	Orient Orientation
@@ -83,24 +84,35 @@ func convertBook(ctx context.Context, eng *engine, o Options, report func(Event)
 	}
 
 	report(Event{Stage: stageMeasuring})
-	first, err := eng.newWorker(pdf)
+	spans, err := parsePages(o.Pages)
 	if err != nil {
 		return nil, err
 	}
-	n, err := first.pageCount()
+	first, err := eng.newWorker(pdf, o.Password)
+	if err != nil {
+		return nil, err
+	}
+	total, err := first.pageCount()
 	if err != nil {
 		first.Close()
 		return nil, err
 	}
-	if n == 0 {
+	if total == 0 {
 		first.Close()
 		return nil, errors.New("the PDF has no pages")
 	}
+	// sel holds the PDF page behind each page of the book.
+	sel, err := selectPages(spans, total)
+	if err != nil {
+		first.Close()
+		return nil, err
+	}
+	n := len(sel)
 
-	plan := Plan{Pages: n, Tally: map[string]int{}, Mixed: o.Mixed, DPI: o.DPI}
+	plan := Plan{Pages: n, Of: total, Tally: map[string]int{}, Mixed: o.Mixed, DPI: o.DPI}
 	if o.DPI == dpiAuto {
 		plan.DPI = defaultDPI
-		if ppi, ok := first.scanPPI(n); ok {
+		if ppi, ok := first.scanPPI(sel); ok {
 			plan.DPI, plan.Scan = ppi, true
 		}
 	}
@@ -110,7 +122,7 @@ func convertBook(ctx context.Context, eng *engine, o Options, report func(Event)
 	// front and only the encoded pages need to be held in memory.
 	sizes := make([]Size, n)
 	for i := range n {
-		if sizes[i], err = first.pageSize(i, o.DPI); err != nil {
+		if sizes[i], err = first.pageSize(sel[i], o.DPI); err != nil {
 			first.Close()
 			return nil, err
 		}
@@ -123,15 +135,15 @@ func convertBook(ctx context.Context, eng *engine, o Options, report func(Event)
 	// to one entry per page.
 	var toc []TOCEntry
 	if o.TOC == tocBookmarks {
-		toc, _ = first.outline(n)
+		toc, _ = first.outline(slotOf(sel))
 	}
-	labels := first.pageLabels(n)
+	labels := first.pageLabels(sel)
 
 	plan.Canvas = chooseCanvas(sizes, o.MaxEdge)
 	plan.Orient = bookOrientation(plan.Canvas, o.Orient, o.Mixed)
 	report(Event{Stage: stageRendering, Total: n, Plan: &plan})
 
-	pages, flattened, err := buildPages(ctx, eng, pdf, first, sizes, plan.Canvas, o, func(done int) {
+	pages, flattened, err := buildPages(ctx, eng, pdf, first, sel, sizes, plan.Canvas, o, func(done int) {
 		report(Event{Stage: stageRendering, Done: done, Total: n})
 	})
 	if err != nil {
@@ -197,7 +209,7 @@ func convertBook(ctx context.Context, eng *engine, o Options, report func(Event)
 
 // buildPages renders, processes and encodes every page in parallel. first is
 // an open worker, which becomes one of them.
-func buildPages(ctx context.Context, eng *engine, pdf []byte, first *worker, sizes []Size, canvas Size, o Options, tick func(done int)) ([]Page, int, error) {
+func buildPages(ctx context.Context, eng *engine, pdf []byte, first *worker, sel []int, sizes []Size, canvas Size, o Options, tick func(done int)) ([]Page, int, error) {
 	n := len(sizes)
 	pages := make([]Page, n)
 	var flattened, done atomic.Int64
@@ -226,14 +238,14 @@ func buildPages(ctx context.Context, eng *engine, pdf []byte, first *worker, siz
 			w := first
 			if k > 0 {
 				var err error
-				if w, err = eng.newWorker(pdf); err != nil {
+				if w, err = eng.newWorker(pdf, o.Password); err != nil {
 					cancel(err)
 					return
 				}
 			}
 			defer w.Close()
 			for i := range next {
-				p, flat, err := buildPage(w, i, sizes[i], canvas, o)
+				p, flat, err := buildPage(w, sel[i], i == 0, sizes[i], canvas, o)
 				if err != nil {
 					cancel(err)
 					return
@@ -256,7 +268,8 @@ func buildPages(ctx context.Context, eng *engine, pdf []byte, first *worker, siz
 	return pages, int(flattened.Load()), nil
 }
 
-func buildPage(w *worker, i int, size, canvas Size, o Options) (Page, bool, error) {
+// buildPage renders PDF page i; the book's first page also gets a thumbnail.
+func buildPage(w *worker, i int, first bool, size, canvas Size, o Options) (Page, bool, error) {
 	img, err := w.render(i, o.DPI)
 	if err != nil {
 		return Page{}, false, err
@@ -294,7 +307,7 @@ func buildPage(w *worker, i int, size, canvas Size, o Options) (Page, bool, erro
 		return Page{}, false, fmt.Errorf("page %d: encoding: %w", i+1, err)
 	}
 	p := Page{JPEG: buf.Bytes(), Size: target, Source: size, Orient: size.Orientation()}
-	if i == 0 {
+	if first {
 		p.Thumb = thumbnail(enc, 360)
 	}
 	return p, fl.Active, nil
