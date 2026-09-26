@@ -55,11 +55,11 @@ complete workflow still reaches outside the binary.
 
 ## Platform integration
 
-- [ ] Windows: an icon and version information in the `.exe`, from a
+- [x] Windows: an icon and version information in the `.exe`, from a
   resource file generated in Go so no Windows toolchain is needed.
-- [ ] macOS: ship an `.app` bundle beside the command-line binary, so
+- [x] macOS: ship an `.app` bundle beside the command-line binary, so
   double-clicking opens the GUI without a Terminal window.
-- [ ] Linux: a `.desktop` file and icon in the release archives.
+- [x] Linux: a `.desktop` file and icon in the release archives.
 - [ ] Code signing for Windows and notarisation for macOS, so downloaded
   binaries open without security warnings.
 

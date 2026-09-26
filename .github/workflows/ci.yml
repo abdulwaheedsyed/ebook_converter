@@ -50,6 +50,11 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
+      # On Windows, link the icon and version resources into the test
+      # binary, so TestWindowsResources can check Windows reads them.
+      - name: Windows resources
+        if: runner.os == 'Windows'
+        run: go run ./tools/packaging winres
       - name: go test
         run: go test ./...
         env:
@@ -86,6 +91,26 @@ jobs:
       - run: go test -run TestEpubcheckGolden -v ./internal/check
         env:
           EPUBCHECK_VERIFY: "1"
+
+  # The application bundle: signed the way releases are, then checked by
+  # the tools macOS itself uses.
+  macos-app:
+    name: macOS app bundle
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - run: make app
+        env:
+          CGO_ENABLED: "0"
+      - run: plutil -lint dist/Leafbind.app/Contents/Info.plist
+      - run: codesign --force --sign - dist/Leafbind.app
+      - run: codesign --verify --strict --verbose=2 dist/Leafbind.app
+      - run: dist/Leafbind.app/Contents/MacOS/leafbind --version
+      - name: The icon is readable
+        run: sips -g pixelWidth dist/Leafbind.app/Contents/Resources/Leafbind.icns
 
   build:
     runs-on: ubuntu-latest

@@ -10,10 +10,16 @@ PLATFORMS := linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64 win
 
 export CGO_ENABLED := 0
 
-.PHONY: build test test-short dist package notices clean
+.PHONY: build test test-short dist package app winres notices clean
 
-build:
+# Windows builds carry the icon and version information as resources, which
+# tools/packaging writes as .syso objects that go build links in.
+winres:
+	go run ./tools/packaging winres -version $(VERSION)
+
+build: winres
 	go build -trimpath -ldflags "$(LDFLAGS)" -o $(BINARY) .
+	@rm -f rsrc_windows_*.syso
 
 test:
 	go test ./...
@@ -21,7 +27,7 @@ test:
 test-short:
 	go test -short ./...
 
-dist:
+dist: winres
 	@mkdir -p dist
 	@for p in $(PLATFORMS); do \
 		os=$${p%/*}; arch=$${p#*/}; ext=; \
@@ -30,11 +36,23 @@ dist:
 		echo "building $$out"; \
 		GOOS=$$os GOARCH=$$arch go build -trimpath -ldflags "$(LDFLAGS)" -o $$out . || exit 1; \
 	done
+	@rm -f rsrc_windows_*.syso
 	@cp LICENSE THIRD_PARTY_NOTICES.md dist/
+
+# A macOS application bundle for this Mac, to try it out: dist/Leafbind.app.
+app:
+	@mkdir -p dist
+	go build -trimpath -ldflags "$(LDFLAGS)" -o dist/leafbind-app .
+	@rm -rf dist/Leafbind.app
+	go run ./tools/packaging app -version $(VERSION) -bin dist/leafbind-app -o dist/Leafbind.app
+	@rm dist/leafbind-app
 
 # Release archives: tar.gz for Linux and macOS, which keeps the executable
 # bit, zip for Windows. Each holds the binary, LICENSE, the third-party
-# notices and the README. Uses sha256sum, so run it on Linux (as CI does).
+# notices and the README. On macOS the binary is inside Leafbind.app, with
+# leafbind beside it as a link for the command line; on Linux a desktop
+# entry and icons come with it. Uses sha256sum, so run it on Linux (as CI
+# does). The macOS bundles are signed afterwards, on a Mac.
 package: dist
 	@rm -rf dist/pkg
 	@for p in $(PLATFORMS); do \
@@ -42,7 +60,13 @@ package: dist
 		[ $$os = windows ] && ext=.exe; \
 		name=$(BINARY)-$(VERSION)-$$os-$$arch; dir=dist/pkg/$$name; \
 		mkdir -p $$dir; \
-		cp dist/$$name$$ext $$dir/$(BINARY)$$ext; \
+		if [ $$os = darwin ]; then \
+			go run ./tools/packaging app -version $(VERSION) -bin dist/$$name -o $$dir/Leafbind.app >/dev/null || exit 1; \
+			ln -s Leafbind.app/Contents/MacOS/$(BINARY) $$dir/$(BINARY); \
+		else \
+			cp dist/$$name$$ext $$dir/$(BINARY)$$ext; \
+		fi; \
+		if [ $$os = linux ]; then go run ./tools/packaging linux -o $$dir || exit 1; fi; \
 		cp LICENSE THIRD_PARTY_NOTICES.md README.md $$dir/; \
 		if [ $$os = windows ]; then \
 			(cd dist/pkg && zip -qr ../$$name.zip $$name); \
@@ -59,4 +83,4 @@ notices:
 	go run ./tools/gennotices
 
 clean:
-	rm -rf dist $(BINARY) $(BINARY).exe
+	rm -rf dist $(BINARY) $(BINARY).exe rsrc_windows_*.syso

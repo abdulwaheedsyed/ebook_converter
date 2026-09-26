@@ -63,20 +63,42 @@ Previewer, or Send to Kindle, can then take the rest of the way.
 ## Install
 
 Download the archive for your platform from the
-[releases page](https://github.com/abdulwaheedsyed/leafbind/releases),
-check it against `SHA256SUMS`, and put the `leafbind` binary somewhere
-on your `PATH`:
+[releases page](https://github.com/abdulwaheedsyed/leafbind/releases) and
+check it against `SHA256SUMS`:
 
 ```bash
 sha256sum --ignore-missing -c SHA256SUMS      # macOS: shasum -a 256 -c SHA256SUMS
-tar -xzf leafbind-*-linux-amd64.tar.gz
 ```
 
-On macOS, a binary downloaded through a browser is quarantined by Gatekeeper
-because it is not notarised. Clear the flag once after extracting:
+**Windows.** Unzip it and double-click `leafbind.exe`, or put it on your
+`PATH` for the command line. The executable carries its icon and version
+details.
+
+**macOS.** The archive holds `Leafbind.app`, which opens the interface
+without a Terminal window, and a `leafbind` link to the program inside it
+for the command line. Drag `Leafbind.app` to Applications. It is signed ad
+hoc but not notarised, so the first time, open it with right-click → Open,
+or clear the quarantine flag that the browser set:
 
 ```bash
-xattr -d com.apple.quarantine leafbind
+xattr -dr com.apple.quarantine Leafbind.app
+```
+
+For the command line after moving the app:
+
+```bash
+sudo ln -s /Applications/Leafbind.app/Contents/MacOS/leafbind /usr/local/bin/leafbind
+```
+
+**Linux.** Put `leafbind` on your `PATH`. The desktop entry and icon in the
+archive add it to the applications menu:
+
+```bash
+tar -xzf leafbind-*-linux-amd64.tar.gz && cd leafbind-*-linux-amd64
+install -Dm755 leafbind ~/.local/bin/leafbind
+install -Dm644 leafbind.desktop ~/.local/share/applications/leafbind.desktop
+install -Dm644 leafbind.svg ~/.local/share/icons/hicolor/scalable/apps/leafbind.svg
+install -Dm644 leafbind.png ~/.local/share/icons/hicolor/256x256/apps/leafbind.png
 ```
 
 Or install from source with Go 1.27 or later:
@@ -91,10 +113,12 @@ Or build from a clone:
 make build        # ./leafbind for this machine
 make dist         # every supported platform, into dist/
 make package      # release archives and SHA256SUMS, into dist/
+make app          # dist/Leafbind.app, on a Mac
 ```
 
 No C compiler is needed for any target: the build is pure Go with
-`CGO_ENABLED=0`.
+`CGO_ENABLED=0`. A plain `go build` or `go install` works too, but leaves
+out the Windows icon and version details, which the Makefile adds.
 
 ## The graphical interface
 
@@ -395,12 +419,20 @@ conversion, ZIP packaging, XML and validation — is Go's standard library, plus
 make test         # all tests, including end-to-end conversions (about 20 s)
 make test-short   # unit tests only; skips anything that starts the PDF engine
 make notices      # regenerate THIRD_PARTY_NOTICES.md after changing dependencies
+go run ./tools/packaging icons -o icons   # the icons, as .ico, .icns and PNG
 go run ./tools/demodocs -o demo   # the sample PDFs shown in the screenshots
 ```
 
 CI runs the full test suite on every released platform for each push to
 `main` and each pull request. Pushing a tag such as `v1.2.3` builds, tests
-and publishes a release with the archives attached.
+and publishes a release with the archives attached; the macOS app bundles
+are signed on a Mac on the way.
+
+Everything each platform needs beyond the executable comes from
+`tools/packaging`, drawn from the one icon in `web/icon.svg`: the Windows
+icon and version resources, written as a `.syso` object that `go build`
+links in; the macOS bundle, `Info.plist` and `.icns`; and the Linux desktop
+entry. It needs no platform tools, so every archive is built on Linux.
 
 The tests fail if a linked module is missing from `THIRD_PARTY_NOTICES.md` or
 listed at the wrong version, so the notices cannot silently go stale.

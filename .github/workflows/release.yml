@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  release:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -20,6 +20,57 @@ jobs:
           go-version-file: go.mod
       - run: go test ./...
       - run: make package VERSION=${{ github.ref_name }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: archives
+          path: |
+            dist/*.tar.gz
+            dist/*.zip
+
+  # Apple silicon refuses to run unsigned code, and an app bundle whose
+  # signature does not cover its Info.plist and resources is reported as
+  # damaged. The Go linker signs the arm64 executable, but not the bundle
+  # around it, so each bundle is signed here, ad hoc, on a Mac.
+  sign-macos:
+    needs: build
+    runs-on: macos-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: archives
+          path: dist
+      - name: Sign the app bundles
+        env:
+          COPYFILE_DISABLE: "1" # no AppleDouble files in the archives
+        run: |
+          set -e
+          for a in dist/*-darwin-*.tar.gz; do
+            name=$(basename "$a" .tar.gz)
+            rm -rf work && mkdir work
+            tar -xzf "$a" -C work
+            codesign --force --sign - "work/$name/Leafbind.app"
+            codesign --verify --strict --verbose=2 "work/$name/Leafbind.app"
+            tar -C work --uid 0 --gid 0 -czf "$a" "$name"
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: archives-signed
+          path: dist/*-darwin-*.tar.gz
+
+  publish:
+    needs: sign-macos
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v4
+        with:
+          name: archives
+          path: dist
+      - uses: actions/download-artifact@v4
+        with:
+          name: archives-signed
+          path: dist
+      - run: cd dist && sha256sum *.tar.gz *.zip > SHA256SUMS && cat SHA256SUMS
       - name: Publish
         env:
           GH_TOKEN: ${{ github.token }}
